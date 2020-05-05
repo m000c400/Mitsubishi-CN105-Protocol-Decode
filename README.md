@@ -1,15 +1,14 @@
-# Mitsubishi-CN105-Protocol-Decode
-Documentaion of Mitsubishi CN105 Protocol of Ecodan Air Source Heat Pumps
-****
-Physical
-Command / Response Format
-Checksum
-Preable
-Commands
-****
+#Mitsubishi-CN105-Protocol-Decode
+- [Physical](#physical)
+- [Command Format](#command-format)
+  * [Checksum](#checksum)
+  * [Preamble](#preamble)
+    + [Query Preamble](#query-preamble)
+    + [Response Preamble](#response-preamble)
+- [Commands](#commands)
 # Physical
 Serial, 2400, 8, E, 1
-****
+
 # Command Format
 
 | Preamble | Command | Payload | Checksum |
@@ -19,13 +18,13 @@ Serial, 2400, 8, E, 1
 ## Checksum
 
 Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
-
-## Query Preamble
+## Preamble
+### Query Preamble
 | 0 | 1 | 2 | 3 | 4 |
 | ---  | ---  | ---  | ---  | ---  |
 | 0xfc | 0x42 | 0x02 | 0x7a | 0x10 |
 
-## Response Preamble
+### Response Preamble
 
 | 0 | 1 | 2 | 3 | 4 |
 | ---  | ---  | ---  | ---  | ---  |
@@ -80,4 +79,15 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0x25 |     |
 | 0x26 | HWSetPoint, ExternalSetPoint, ExternalFlowTemp, Operation Mode |
 
+## Command 0x01 Time & Date
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| Y | M | D | h | m | s |   |   |   |   |    |    |    |    |    |
+
+* Y: Year
+* M: Month
+* D: Day
+* h: Hour
+* m: Minute
+* s: Second
 
