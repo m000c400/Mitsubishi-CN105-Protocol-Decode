@@ -45,7 +45,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0x06 |     |
 | 0x07 |     |
 | 0x08 |     |
-| 0x09 | Zone1, Zone2, FlowSetPoint, FlowTemp, WaterSetPoint |
+| [0x09](#0x09) | Zone1, Zone2, FlowSetPoint, FlowTemp, WaterSetPoint |
 | 0x0a |     |
 | 0x0b | Zone1, Outside |
 | 0x0c | WaterHeatingFeed, WaterHeatingReturn, HotWater |
@@ -83,6 +83,12 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0x26 | HWSetPoint, ExternalSetPoint, ExternalFlowTemp, Operation Mode |
 
 ## 0x01
+### Query
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |
+
+### Response
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
 | Y | M | D | h | m | s |   |   |   |   |    |    |    |    |    |
@@ -93,4 +99,22 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 * h: Hour
 * m: Minute
 * s: Second
+
+## 0x09
+### Query
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |
+
+### Response
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| Z1.u | Z1.l | Z2.u | Z2.l | SP.u | SP.l | FT.u | FT.l | HWSP.u  | HWSP.l  |    |    |    |    |    |
+
+* Zone1 Temperature:  ((Z1.u * 256 ) + Z1.l) / 100;
+* Zone2 Temperature:  ((Z2.u * 256 ) + Z2.l) / 100;
+* Flow Setpoint    :  ((SP.u * 256 ) + SP.l) / 100;
+* Flow Temperature :  ((FT.u * 256 ) + FT.l) / 100;
+* Hot Water Temp   :  ((HW.u * 256 ) + HW.l) / 100;
+
 
