@@ -1,4 +1,4 @@
-#Mitsubishi-CN105-Protocol-Decode
+# Mitsubishi-CN105-Protocol-Decode
 - [Physical](#physical)
 - [Command Format](#command-format)
   * [Checksum](#checksum)
@@ -6,6 +6,9 @@
     + [Query Preamble](#query-preamble)
     + [Response Preamble](#response-preamble)
 - [Commands](#commands)
+  * [0x01](#0x01)
+
+
 # Physical
 Serial, 2400, 8, E, 1
 
@@ -34,7 +37,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | Command | Description |
 | ------- | ----------- |
 | 0x00 |     |
-| 0x01 | Time & Date |
+| [0x01](#0x01) | Time & Date |
 | 0x02 |     |
 | 0x03 |     |
 | 0x04 |     |
@@ -79,7 +82,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0x25 |     |
 | 0x26 | HWSetPoint, ExternalSetPoint, ExternalFlowTemp, Operation Mode |
 
-## Command 0x01 Time & Date
+## 0x01
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
 | Y | M | D | h | m | s |   |   |   |   |    |    |    |    |    |
