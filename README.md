@@ -147,8 +147,8 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 * External Flow SetPoint:  (( <<8 ) + R.l) / 100;
 * External Flow Temp:
 * Operation Mode: 
-** 0 : Temperature Mode
-** 1 : Flow Control Mode
-** 2 : Compensation Curve Mode
+  * 0 : Temperature Mode
+  * 1 : Flow Control Mode
+  * 2 : Compensation Curve Mode
 
 
