@@ -11,6 +11,8 @@ For Ecodan ASHP Units
   * [0x09](#0x09)
   * [0x0b](#0x0b)
   * [0x0c](#0x0c)
+  * [0x0d](#0x0d)
+  * [0x26](#0x26)
   
   
 
@@ -47,8 +49,8 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | [0x09](#0x09) | Zone1, Zone2, FlowSetPoint, FlowTemp, WaterSetPoint |
 | [0x0b](#0x0b) | Zone1, Outside |
 | [0x0c](#0x0c) | WaterHeatingFeed, WaterHeatingReturn, HotWater |
-| 0x0d | fBoilerFlow,  fBoilerReturn |
-| 0x26 | HWSetPoint, ExternalSetPoint, ExternalFlowTemp, Operation Mode |
+| [0x0d](#0x0d) | fBoilerFlow,  fBoilerReturn |
+| [0x26](#0x26) | HWSetPoint, ExternalSetPoint, ExternalFlowTemp, Operation Mode |
 
 ## 0x01
 ### Query
@@ -141,5 +143,12 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
 |  |  |  |  | |  |  |  |   |   |    |    |    |    |    |
 
-* Boiler Flow Temperature  :  ((F.u <<8 ) + F.l) / 100;
-* Boiler Return Temperature:  ((R.u <<8 ) + R.l) / 100;
+* HotWater SetPoint  :  (( <<8 ) + F.l) / 100;
+* External Flow SetPoint:  (( <<8 ) + R.l) / 100;
+* External Flow Temp:
+* Operation Mode: 
+** 0 : Temperature Mode
+** 1 : Flow Control Mode
+** 2 : Compensation Curve Mode
+
+
