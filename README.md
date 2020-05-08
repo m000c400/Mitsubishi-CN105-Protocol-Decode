@@ -22,24 +22,22 @@ Serial, 2400, 8, E, 1
 
 # Command Format
 
-| Preamble | Command | Payload | Checksum |
+| Header | Payload | Checksum |
 | --- | --- | --- | --- |
-| 5 Bytes | 1 Byte | 15 Bytes | 1 Byte |
+| 5 Bytes | 16 Bytes | 1 Byte |
 
 ## Checksum
 
 Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
-## Preamble
-### Query Preamble
+## Header
 | 0 | 1 | 2 | 3 | 4 |
 | ---  | ---  | ---  | ---  | ---  |
-| 0xfc | 0x42 | 0x02 | 0x7a | 0x10 |
-
-### Response Preamble
-
-| 0 | 1 | 2 | 3 | 4 |
+| Sync Byte | Packet Type | Uknown | Unknown | Payload Size |
 | ---  | ---  | ---  | ---  | ---  |
-| 0xfc | 0x62 | 0x02 | 0x7a | 0x10 |
+| 0xfc | Type | 0x02 | 0x7a | Length |
+
+- Type : Packet type
+ -- 
 
 # Commands
 | Command | Description |
