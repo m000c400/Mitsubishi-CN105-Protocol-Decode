@@ -2,11 +2,13 @@
 For Ecodan ASHP Units
 - [Physical](#physical)
 - [Command Format](#command-format)
-  * [Checksum](#checksum)
-  * [Preamble](#preamble)
-    + [Query Preamble](#query-preamble)
-    + [Response Preamble](#response-preamble)
-- [Commands](#commands)
+- [Header](#Header)
+  * [Sync Byte](#sync-byte)
+  * [Packet Type](#packet-type)
+- [Checksum](#checksum)
+  
+  
+  - [Commands](#commands)
   * [0x01](#0x01)
   * [0x09](#0x09)
   * [0x0b](#0x0b)
@@ -23,18 +25,34 @@ Serial, 2400, 8, E, 1
 # Command Format
 
 | Header | Payload | Checksum |
-| --- | --- | --- | --- |
+|--------|---------|----------|
 | 5 Bytes | 16 Bytes | 1 Byte |
+
+# Header
+| Sync Byte | Packet Type | Uknown | Unknown | Payload Size |
+|---|---|--|---|---|
+| 0xfc | Type | 0x02 | 0x7a | Length |
+
+## Sync Byte 
+0xfc
+
+## Packet Type
+
+| Value | Packet Type      | Direction      |
+|-------|------------------|----------------|
+|  0x41 | Set Request      | To Heat Pump   |
+|  0x61 | Set Response     | From Heat Pump |
+|  0x42 | Get Request      | To Heat Pump   |
+|  0x62 | Get Response     | From Heat Pump |
+|  0x5A | Connect Request  | To Heat Pump   |
+|  0x7A | Connect Response | From Heat Pump |
+|  0x5B | Extended Connect Request  | To Heat Pump   |
+|  0x7B | Extended Connect Responce | To Heat Pump   |
+
 
 ## Checksum
 
 Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
-## Header
-| 0 | 1 | 2 | 3 | 4 |
-| ---  | ---  | ---  | ---  | ---  |
-| Sync Byte | Packet Type | Uknown | Unknown | Payload Size |
-| ---  | ---  | ---  | ---  | ---  |
-| 0xfc | Type | 0x02 | 0x7a | Length |
 
 - Type : Packet type
  -- 
