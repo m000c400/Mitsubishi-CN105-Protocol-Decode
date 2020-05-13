@@ -117,14 +117,22 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 ### 0x26
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-|  |  |  |  | |  |  |  |   |   |    |    |    |    |    |
+|  |  |  | Pwr|  | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
 
 * HotWater SetPoint  :  (( <<8 ) + F.l) / 100;
 * External Flow SetPoint:  (( <<8 ) + R.l) / 100;
 * External Flow Temp:
-* Operation Mode: 
+* Pwr - Power
+  * 0 : Standby
+  * 1 : On
+* HW - Hot Water Mode
+  * 0 : Normal
+  * 1 : Economy
+* Op - Operation Mode: 
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
+ 
+
 
 
