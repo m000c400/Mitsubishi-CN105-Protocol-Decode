@@ -117,7 +117,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 ### 0x26
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-|  |  |  | Pwr|  | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
+|  |  |  | Pwr| FP | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
 
 * HotWater SetPoint  :  (( <<8 ) + F.l) / 100;
 * External Flow SetPoint:  (( <<8 ) + R.l) / 100;
@@ -132,6 +132,8 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
+* FP - Frost Protect
+  * Reads 0 normally, saw 0x05 during frost protect
  
 
 
