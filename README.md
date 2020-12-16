@@ -89,8 +89,8 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9       | 10      | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|------|------|------|------|------|------|------|------|---------|---------|----|----|----|----|----|----|
 | 0x09 | Z1.u | Z1.l | Z2.u | Z2.l | SP.u | SP.l | FT.u | FT.l | HWSP.u  | HWSP.l  |    |    |    |    |    |    |
-* Zone1 Temperature:  ((Z1.u <<8 ) + Z1.l) / 100;
-* Zone2 Temperature:  ((Z2.u <<8 ) + Z2.l) / 100;
+* Zone1 Target Temperature:  ((Z1.u <<8 ) + Z1.l) / 100;
+* Zone2 Target Temperature:  ((Z2.u <<8 ) + Z2.l) / 100;
 * Flow Setpoint    :  ((SP.u <<8 ) + SP.l) / 100;
 * Flow Temperature :  ((FT.u <<8 ) + FT.l) / 100;
 * Hot Water Temp   :  ((HW.u <<8 ) + HW.l) / 100;
@@ -100,14 +100,14 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 | 0x0b | Z1.u | Z1.l |    |    |   |  | Z2.u | Z2.l |  |  | O | |  |   |    |    |    |    |    |   |
 * Zone1 Temperature:  ((Z1.u <<8 ) + Z1.l) / 100;
 * Zone2 Temperature:  ((Z2.u <<8 ) + Z2.l) / 100;
-* Outside Temp     :  (O/2) -39; 
+* Outside Temp     :  (O/2) -40; 
 ### 0x0c
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | 0x0c | F.u | F.l |  | R.u |R.l |  | Hw.u | Hw.l |   |   |    |    |    |    |    |
-* Water Heater Feed Temperature  :  ((F.u <<8 ) + F.l) / 100;
-* Water Heater Return Temperature:  ((R.u <<8 ) + R.l) / 100;
-* Water Temperature              :  ((HW.u <<8 ) + HW.l) / 100;
+* Water Out Temperature  :  ((F.u <<8 ) + F.l) / 100;
+* Water Return Temperature:  ((R.u <<8 ) + R.l) / 100;
+* Hot Water Temperature              :  ((HW.u <<8 ) + HW.l) / 100;
 ### 0x0d
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
@@ -117,7 +117,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 ### 0x26
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-|  |  |  | Pwr| FP | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
+|  |  |  | Pwr| OM | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
 
 * HotWater SetPoint  :  (( <<8 ) + F.l) / 100;
 * External Flow SetPoint:  (( <<8 ) + R.l) / 100;
@@ -125,6 +125,11 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 * Pwr - Power
   * 0 : Standby
   * 1 : On
+* OM Operation Mode
+  * 0 : Off
+  * 1 : Hot Water On
+  * 2 : Heating On
+  * 5 : Possibly Frost Protect
 * HW - Hot Water Mode
   * 0 : Normal
   * 1 : Economy
@@ -132,8 +137,7 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
-* FP - Frost Protect
-  * Reads 0 normally, saw 0x05 during frost protect
+
  
 
 
