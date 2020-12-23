@@ -1,7 +1,7 @@
 # Mitsubishi-CN105-Protocol-Decode
 For Ecodan ASHP Units
 - [Physical](#physical)
-- [Command Format](#command-format)
+- [Command and Response Format](#command-format)
 - [Header](#Header)
   * [Sync Byte](#sync-byte)
   * [Packet Type](#packet-type)
