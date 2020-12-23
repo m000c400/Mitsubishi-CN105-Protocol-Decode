@@ -1,14 +1,5 @@
 # Mitsubishi-CN105-Protocol-Decode
 For Ecodan ASHP Units
-- [Physical](#physical)
-- [Command and Response Format](#command-format)
-  * [Header](#Header)
-    * [Sync Byte](#sync-byte)
-    * [Packet Type](#packet-type)
-    * [Length](#length)
-  * [Checksum](#checksum)
-
-
 # Physical
 Serial, 2400, 8, E, 1
 # Command Format
@@ -114,12 +105,12 @@ Responses so far identified.
 ### 0x09
 | 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9       | 10      | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|------|------|------|------|------|------|------|------|---------|---------|----|----|----|----|----|----|
-| 0x09 | Z1.u | Z1.l | Z2.u | Z2.l | SP.u | SP.l | FT.u | FT.l | HWSP.u  | HWSP.l  |    |    |    |    |    |    |
-* Zone1 Target Temperature:  ((Z1.u <<8 ) + Z1.l) / 100;
-* Zone2 Target Temperature:  ((Z2.u <<8 ) + Z2.l) / 100;
-* Flow Setpoint    :  ((SP.u <<8 ) + SP.l) / 100;
-* Flow Temperature :  ((FT.u <<8 ) + FT.l) / 100;
-* Hot Water Temp   :  ((HW.u <<8 ) + HW.l) / 100;
+| 0x09 | Z1T | Z1T | Z2T | Z2T | Z1ST | Z1SP | Z2SP | Z2SP | HWSP  | HWSP  |    |    |    |    |    |    |
+*Z1T : Zone1 Target Temperature * 100
+*Z2T : Zone2 Target Temperature * 100;
+*Z1SP : Zone 1 Flow SetFlow Setpoint * 100
+*Z2SP : Zone 3 Flow SetFlow Setpoint * 100
+*HWSP : Hot Water Setpoint * 100;
 ### 0x0b
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
