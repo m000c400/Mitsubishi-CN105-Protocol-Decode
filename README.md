@@ -36,7 +36,6 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 Active commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
 | Command | Brief Description |
 | ------- | ----------- |
-| 0x00 | Unknown |
 | 0x01 | Time & Date |
 | 0x02 | Unknown |
 | 0x03 | Unknown |
@@ -86,7 +85,7 @@ Responses so far identified.
 | 0x01 | Time & Date |
 | 0x05 | Various Flags |
 | 0x09 | Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint |
-| 0x0b | Zone 1 & 2 and Outside |Temperature
+| 0x0b | Zone 1 & 2 and Outside Temperature |
 | 0x0c | Water Flow Temperatures |
 | 0x0d | Boiler Flow Temperatures |
 | 0x26 | Various Operantion Mode Flags |
@@ -108,7 +107,7 @@ Responses so far identified.
 | 0x01  |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
 * HWB : Hot Water Boost
 ### 0x09 - Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint
-| 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11 | 12 | 13 | 14 | 15 | 16 |
+| 0    |   1  |   2  | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|------|------|------|------|------|------|------|------|------|------|----|----|----|----|----|----|
 | 0x09 | Z1T  | Z1T  | Z2T  | Z2T  | Z1ST | Z1SP | Z2SP | Z2SP | HWSP | HWSP |    |    |    |    |    |    |
 * Z1T : Zone1 Target Temperature * 100
@@ -116,13 +115,13 @@ Responses so far identified.
 * Z1SP : Zone 1 Flow SetFlow Setpoint * 100
 * Z2SP : Zone 3 Flow SetFlow Setpoint * 100
 * HWSP : Hot Water Setpoint * 100;
-### 0x0b
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x0b | Z1.u | Z1.l |    |    |   |  | Z2.u | Z2.l |  |  | O | |  |   |    |    |    |    |    |   |
-* Zone1 Temperature:  ((Z1.u <<8 ) + Z1.l) / 100;
-* Zone2 Temperature:  ((Z2.u <<8 ) + Z2.l) / 100;
-* Outside Temp     :  (O/2) -40; 
+### 0x0b - Zone 1 & 2 and Outside Temperature
+|   0  |  1  |  2  | 3 | 4 | 5 | 6 |  7  |  8  | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|-----|-----|---|---|---|---|-----|-----|---|----|----|----|----|----|----|----|
+| 0x0b | Z1T | Z1T |   |   |   |   | Z2T | Z2T |   |    | O  |    |    |    |    |    |
+* Z1T : Zone1 Temperature * 100
+* Z2T : Zone2 Temperature * 100
+* O : Outside Temp  +40 x 2 
 ### 0x0c
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
