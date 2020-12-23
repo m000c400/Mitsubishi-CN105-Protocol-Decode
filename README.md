@@ -84,7 +84,7 @@ Responses so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
 | 0x01 | Time & Date |
-| 0x05 | Hot Water Boot Flag |
+| 0x05 | Various Flags |
 | 0x09 | Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint |
 | 0x0b | Zone 1 & 2 and Outside |Temperature
 | 0x0c | Water Flow Temperatures |
@@ -102,15 +102,20 @@ Responses so far identified.
 * h: Hour
 * m: Minute
 * s: Second
-### 0x09
-| 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9       | 10      | 11 | 12 | 13 | 14 | 15 | 16 |
-|------|------|------|------|------|------|------|------|------|---------|---------|----|----|----|----|----|----|
-| 0x09 | Z1T | Z1T | Z2T | Z2T | Z1ST | Z1SP | Z2SP | Z2SP | HWSP  | HWSP  |    |    |    |    |    |    |
-*Z1T : Zone1 Target Temperature * 100
-*Z2T : Zone2 Target Temperature * 100;
-*Z1SP : Zone 1 Flow SetFlow Setpoint * 100
-*Z2SP : Zone 3 Flow SetFlow Setpoint * 100
-*HWSP : Hot Water Setpoint * 100;
+### 0x05 - Varoius Flags
+|   0   | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|---|---|---|-----|---|---|----|----|----|----|----|----|----|
+| 0x01  |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
+* HWB : Hot Water Boost
+### 0x09 - Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint
+| 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|------|------|------|------|------|------|------|------|------|------|----|----|----|----|----|----|
+| 0x09 | Z1T  | Z1T  | Z2T  | Z2T  | Z1ST | Z1SP | Z2SP | Z2SP | HWSP | HWSP |    |    |    |    |    |    |
+* Z1T : Zone1 Target Temperature * 100
+* Z2T : Zone2 Target Temperature * 100;
+* Z1SP : Zone 1 Flow SetFlow Setpoint * 100
+* Z2SP : Zone 3 Flow SetFlow Setpoint * 100
+* HWSP : Hot Water Setpoint * 100;
 ### 0x0b
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
