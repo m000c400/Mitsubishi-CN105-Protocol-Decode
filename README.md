@@ -2,11 +2,11 @@
 For Ecodan ASHP Units
 - [Physical](#physical)
 - [Command and Response Format](#command-format)
-- [Header](#Header)
-  * [Sync Byte](#sync-byte)
-  * [Packet Type](#packet-type)
-  * [Length](#length)
-- [Checksum](#checksum)
+  * [Header](#Header)
+    * [Sync Byte](#sync-byte)
+    * [Packet Type](#packet-type)
+    * [Length](#length)
+  * [Checksum](#checksum)
 - Set Request
 - Set Response
 - Get Request
