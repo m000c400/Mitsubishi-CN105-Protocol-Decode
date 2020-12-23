@@ -42,16 +42,17 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
 ## Available Commands 
-Commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
+Active commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
 | Command | Brief Description |
 | ------- | ----------- |
 | 0x00 | Unknown |
 | 0x01 | Time & Date |
 | 0x02 | Unknown |
 | 0x03 | Unknown |
-| 0x04 | Unknown - Empty |
+| 0x04 | Unknown - Empty Response |
 | 0x05 | Hot Water Boot Flag |
-| 0x06 | Unknown - Empty |
+| 0x06 | Unknown - Empty Response |
+| 0x06 | Unknown - Empty Response |
 | 0x07 | Unknown |
 | 0x08 | Unknown |
 | 0x09 | Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint |
@@ -64,23 +65,23 @@ Commands so far identified, 0x00 to 0xff. Commands not listed appear to generate
 | 0x13 | Unknown |
 | 0x14 | Unknown |
 | 0x15 | Unknown |
-| 0x16 | Unknown - Empty |
-| 0x17 | Unknown - Empty |
-| 0x18 | Unknown - Empty |
-| 0x19 | Unknown - Empty |
-| 0x1a | Unknown - Empty |
-| 0x1c | Unknown - Empty |
-| 0x1d | Unknown - Empty |
-| 0x1e | Unknown - Empty |
-| 0x1f | Unknown - Empty |
-| 0x20 | Unknown - Empty |
+| 0x16 | Unknown - Empty Response |
+| 0x17 | Unknown - Empty Response |
+| 0x18 | Unknown - Empty Response |
+| 0x19 | Unknown - Empty Response |
+| 0x1a | Unknown - Empty Response |
+| 0x1c | Unknown - Empty Response |
+| 0x1d | Unknown - Empty Response |
+| 0x1e | Unknown - Empty Response |
+| 0x1f | Unknown - Empty Response |
+| 0x20 | Unknown - Empty Response |
 | 0x26 | Various Operantion Mode Flags |
 | 0x27 | Unknown |
 | 0x28 | Various Operantion Mode Flags |
 | 0x29 | Zone 1 & 2 Temperatures |
 | 0xa1 | Unknown |
 | 0xa2 | Unknown |
-| 0xa3 | Unknown - Empty |
+| 0xa3 | Unknown - Empty Response |
 
 # Get Response - Packet Type 0x62
 ## Payload
