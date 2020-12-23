@@ -101,7 +101,12 @@ Responses so far identified.
 * h: Hour
 * m: Minute
 * s: Second
-### 0x05 - Varoius Flags
+### 0x04 - Various Flags
+|   0   | 1  | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|----|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x01  | CF |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |  
+* CF : Compressor Frequency
+### 0x05 - Various Flags
 |   0   | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |-------|---|---|---|---|---|---|-----|---|---|----|----|----|----|----|----|----|
 | 0x01  |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
@@ -123,27 +128,28 @@ Responses so far identified.
 * Z1T : Zone1 Temperature * 100
 * Z2T : Zone2 Temperature * 100
 * O : Outside Temp  +40 x 2 
-### 0x0c
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x0c | F.u | F.l |  | R.u |R.l |  | Hw.u | Hw.l |   |   |    |    |    |    |    |
-* Water Out Temperature  :  ((F.u <<8 ) + F.l) / 100;
-* Water Return Temperature:  ((R.u <<8 ) + R.l) / 100;
-* Hot Water Temperature              :  ((HW.u <<8 ) + HW.l) / 100;
-### 0x0d
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x0d| F.u | F.l |  | R.u |R.l |  |  |  |   |   |    |    |    |    |    |
-* Boiler Flow Temperature  :  ((F.u <<8 ) + F.l) / 100;
-* Boiler Return Temperature:  ((R.u <<8 ) + R.l) / 100;
+### 0x0c - Compressor Flow Temps
+|  0   | 1  | 2  | 3 | 4  | 5  | 6 | 7  |  8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|----|----|---|----|----|---|----|----|---|----|----|----|----|----|----|----|
+| 0x0c | OF | OF |   | RF | RF |   | HW | HW |   |    |    |    |    |    |    |    |
+* OF : Compressor Water Out Flow  * 100
+* RF : Compressor Return Flow Temperature * 100
+* HW : Hot Water Temperature * 100
+### 0x0d - Boiler Temps
+|  0   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x0d | F | F |   | R | R |   |   |   |   |    |    |    |    |    |    |    |
+* F : Boiler Flow Temperature * 100;
+* R : Boiler Return Temperature * 100;
+### 0x14 - Primary Cct Flow Rate
+|   0   | 1  | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|----|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x14  |    |   |   |   |   |   |   |   |   |    | PF |    |    |    |    |    |  
+* PF : Primary Flow Rate (l/min)
 ### 0x26
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-|  |  |  | Pwr| OM | HW | Op  |  | HWPS | HWSP | EXTSP |  EXTSP | EXTFL   | EXTFL |    |
-
-* HotWater SetPoint  :  (( <<8 ) + F.l) / 100;
-* External Flow SetPoint:  (( <<8 ) + R.l) / 100;
-* External Flow Temp:
+| 0 | 1 | 2 |  3  | 4  | 5  | 6  | 7 |   8  |  9   |  10 |  11 | 12 | 13 | 14 |
+|---|---|---|-----|----|----|----|---|------|------|-----|-----|----|----|----|
+|   |   |   | Pwr | OM | HW | Op |   | HWPS | HWSP | HSP | HSP | SP | SP |    |
 * Pwr - Power
   * 0 : Standby
   * 1 : On
@@ -151,7 +157,7 @@ Responses so far identified.
   * 0 : Off
   * 1 : Hot Water On
   * 2 : Heating On
-  * 5 : Possibly Frost Protect
+  * 5 : Frost Protect
 * HW - Hot Water Mode
   * 0 : Normal
   * 1 : Economy
@@ -159,8 +165,12 @@ Responses so far identified.
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
-
- 
-
-
-
+* HWSP : HotWater SetPoint * 100;
+* HSP : Heating Flow SetPoint * 100;
+* SP : Unknown Setpoint:
+### 0x28 - Various Flags
+|   0   | 1 | 2 | 3 | 4  | 5  | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|----|----|---|---|---|---|----|----|----|----|----|----|----|
+| 0x28  |   |   |   | HM | HT |   |   |   |   |    |    |    |    |    |    |    |  
+* HM : Holiday Mode
+* HT : Hot Water Timer
