@@ -25,13 +25,13 @@ Serial, 2400, 8, E, 1
 |  0x7B | Extended Connect Responce | To Heat Pump   |
 ### Length
 Payload Size (Bytes)
-## Checksum
-Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
-# Set Request - Packet Type 0x41
 ## Payload
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
+| Command | x | x | x | x | x | x | x | x | x | x  | x  |  x |  x |  x |  x |  x |
+## Checksum
+Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
+# Set Request - Packet Type 0x41
 ## Available Commands 
 Active commands so far identified.
 | Command | Brief Description |
@@ -40,10 +40,6 @@ Active commands so far identified.
 | 0x34 | Hot Water |
 | 0x35 | Unknown |
 # Get Request - Packet Type 0x42
-## Payload
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
 ## Available Commands 
 Active commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
 | Command | Brief Description |
@@ -84,21 +80,21 @@ Active commands so far identified, 0x00 to 0xff. Commands not listed appear to g
 | 0xa1 | Unknown |
 | 0xa2 | Unknown |
 | 0xa3 | Unknown - Empty Response |
-# Set Response - Packet Type 0x61
-## Payload
+## Payload - All Commands
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
+# Set Response - Packet Type 0x61
 ## Available Commands 
 Active commands so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
 | 0x00 |  OK |
-# Get Response - Packet Type 0x62
-## Payload
+## Payload 
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| Command | . | . | . | . | . | . | . | . | . | .  | .  |  . |  . |  . |  . |  . |
+| Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
+# Get Response - Packet Type 0x62
 ## Resposes 
 Responses so far identified.
 | Command | Brief Description |
