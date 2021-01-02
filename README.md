@@ -80,7 +80,7 @@ Active commands so far identified, 0x00 to 0xff. Commands not listed appear to g
 | 0xa1 | Unknown |
 | 0xa2 | Unknown |
 | 0xa3 | Unknown - Empty Response |
-## Payload - All Commands
+### Payload - All Commands
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
@@ -90,7 +90,7 @@ Active commands so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
 | 0x00 |  OK |
-## Payload 
+### 0x00 - OK , Command OK, or Just Format?
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
