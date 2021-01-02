@@ -27,7 +27,19 @@ Serial, 2400, 8, E, 1
 Payload Size (Bytes)
 ## Checksum
 Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
-# Get Request - Packet Type 0x41
+# Set Request - Packet Type 0x41
+## Payload
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
+## Available Commands 
+Active commands so far identified.
+| Command | Brief Description |
+| ------- | ----------- |
+| 0x32 |  Zone 1 Temp? |
+| 0x34 | Hot Water |
+| 0x35 | Unknown |
+# Get Request - Packet Type 0x42
 ## Payload
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
@@ -72,13 +84,22 @@ Active commands so far identified, 0x00 to 0xff. Commands not listed appear to g
 | 0xa1 | Unknown |
 | 0xa2 | Unknown |
 | 0xa3 | Unknown - Empty Response |
-
+# Set Response - Packet Type 0x61
+## Payload
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| Command | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 0  |  0 |  0 |  0 |  0 |  0 |
+## Available Commands 
+Active commands so far identified.
+| Command | Brief Description |
+| ------- | ----------- |
+| 0x00 |  OK |
 # Get Response - Packet Type 0x62
 ## Payload
 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
 | Command | . | . | . | . | . | . | . | . | . | .  | .  |  . |  . |  . |  . |  . |
-## Available Commands 
+## Resposes 
 Responses so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
