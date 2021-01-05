@@ -36,9 +36,23 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 Active commands so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
-| 0x32 |  Zone 1 Temp? |
+| 0x32 |  Set Options |
 | 0x34 | Hot Water |
 | 0x35 | Unknown |
+### 0x32 - Set Options
+|   0   |   1   | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|-------|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x32  | Flags |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |  
+Flags : Flags to Indicate which fields are active
+0x80: Zone 1 Temperature Setpoint
+#define UNKNOWN1               0x40 
+#define SET_HOT_WATER_SETPOINT 0x20
+#define UKNKOWN2               0x10
+#define SET_HEATING_CONTROL_MODE        0x08 
+#define SET_HOTWATER_MODE      0x04
+#define UNKNOWN3               0x02
+#define SET_SYSTEM_POWER       0x01
+
 # Get Request - Packet Type 0x42
 ## Available Commands 
 Active commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
