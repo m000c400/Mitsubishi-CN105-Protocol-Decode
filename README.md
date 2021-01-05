@@ -40,18 +40,28 @@ Active commands so far identified.
 | 0x34 | Hot Water |
 | 0x35 | Unknown |
 ### 0x32 - Set Options
-|   0   |   1   | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|-------|-------|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x32  | Flags |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |  
-Flags : Flags to Indicate which fields are active
-0x80: Zone 1 Temperature Setpoint
-#define UNKNOWN1               0x40 
-#define SET_HOT_WATER_SETPOINT 0x20
-#define UKNKOWN2               0x10
-#define SET_HEATING_CONTROL_MODE        0x08 
-#define SET_HOTWATER_MODE      0x04
-#define UNKNOWN3               0x02
-#define SET_SYSTEM_POWER       0x01
+|   0   |   1   | 2 | 3 | 4 | 5 |  6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|-------|---|---|---|---|----|-----|---|---|----|----|----|----|----|----|----|
+| 0x32  | Flags |   |   |   |   | HC |     |   |   |    |    |    |    |    |    |    |  
+
+* Flags : Flags to Indicate which fields are active
+** 0x80: Zone 1 Temperature Setpoint
+** 0x40: Unknown 
+** 0x20: Hotwater Setpoint
+** 0x10: Unknown
+** 0x08: Heating Control Mode
+** 0x04: Hot Water Mode
+** 0x02: Unknown
+** 0x01: Power
+
+* HC: Heating Control Mode
+  * 0 : Temperature Mode
+  * 1 : Flow Control Mode
+  * 2 : Compensation Curve Mode
+* HW - Hot Water Mode
+  * 0 : Normal
+  * 1 : Economy
+
 
 # Get Request - Packet Type 0x42
 ## Available Commands 
