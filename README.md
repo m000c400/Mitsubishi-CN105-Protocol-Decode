@@ -45,14 +45,14 @@ Active commands so far identified.
 | 0x32  | Flags |   |   |   |   | HC |     |   |   |    |    |    |    |    |    |    |  
 
 * Flags : Flags to Indicate which fields are active
-** 0x80: Zone 1 Temperature Setpoint
-** 0x40: Unknown 
-** 0x20: Hotwater Setpoint
-** 0x10: Unknown
-** 0x08: Heating Control Mode
-** 0x04: Hot Water Mode
-** 0x02: Unknown
-** 0x01: Power
+  * 0x80 : Zone 1 Temperature Setpoint
+  * 0x40 : Unknown 
+  * 0x20 : Hotwater Setpoint
+  * 0x10 : Unknown
+  * 0x08 : Heating Control Mode
+  * 0x04 : Hot Water Mode
+  * 0x02 : Unknown
+  * 0x01 : Power
 
 * HC: Heating Control Mode
   * 0 : Temperature Mode
