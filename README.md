@@ -2,6 +2,8 @@
 For Ecodan ASHP Units
 I have included my reference implemenataion, but all very much work in progress
 
+: https://gitter.im/Mitsubishi-CN105-Protocol-Decode/community
+
 # Physical
 Serial, 2400, 8, E, 1
 # Command Format
