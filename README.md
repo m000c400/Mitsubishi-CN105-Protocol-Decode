@@ -1,5 +1,7 @@
 # Mitsubishi-CN105-Protocol-Decode
 For Ecodan ASHP Units
+I have included my reference implemenataion, but all very much work in progress
+
 # Physical
 Serial, 2400, 8, E, 1
 # Command Format
