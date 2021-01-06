@@ -44,9 +44,9 @@ Active commands so far identified.
 | 0x34 | Hot Water |
 | 0x35 | Unknown |
 ### 0x32 - Set Options
-|   0   |   1   | 2 | 3 | 4 |  5  |  6  |  7  |   8   |   9   |  10  |  11  | 12 | 13 | 14 | 15 | 16 |
-|-------|-------|---|---|---|-----|-----|-----|-------|-------|------|------|----|----|----|----|----|
-| 0x32  | Flags | Z | P |   | DHW | HC1 | HC2 | DHWSP | DHWSP | Z1SP | Z1SP |    |    |    |    |    |  
+|   0   |   1   | 2 | 3 | 4 |  5  |  6  |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
+|-------|-------|---|---|---|-----|-----|-----|-------|-------|------|------|------|------|----|----|----|
+| 0x32  | Flags | Z | P |   | DHW | HC1 | HC2 | DHWSP | DHWSP | Z1SP | Z1SP | Z2SP | Z2SP |    |    |    |  
 
 * Flags : Flags to Indicate which fields are active
   * 0x80 : Zone 1 Temperature Setpoint
@@ -57,7 +57,6 @@ Active commands so far identified.
   * 0x04 : Hot Water Mode
   * 0x02 : Unknown
   * 0x01 : Power
-
 * Z : Zones the Command Applies to
   * 0x00 : Zone 1
   * 0x01 : Zone 2 ( Probably )
@@ -77,9 +76,14 @@ Active commands so far identified.
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
 * DHWSP : Hot Water Setpoint (Temperature * 100)
-
-
-
+* Z1SP : Zone 1 Setpoint (* 100)
+* Z2SP : Zone 1 Setpoint (* 100)
+### 0x35 - Set Zone 1 Setpoint 
+Identified so far, this must do far more that this!
+|   0   |   1  | 2 | 3 |   4  |  5   | 6 |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
+|-------|------|---|---|------|------|---|-----|-------|-------|------|------|------|------|----|----|----|
+| 0x35  | 0x02 |   |   | Z1SP | Z1SP |   |     |       |       |      |      |      |      |    |    |    |  
+* Z1SP : Zone 1 Setpoint (* 100)
 # Get Request - Packet Type 0x42
 ## Available Commands 
 Active commands so far identified, 0x00 to 0xff. Commands not listed appear to generate no resaponse. Some command listed have empty, payload 0x00, response.
@@ -162,17 +166,22 @@ Responses so far identified.
 ### 0x04 - Various Flags
 |   0   | 1  | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |-------|----|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x01  | CF |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |  
+| 0x04  | CF |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |  
 * CF : Compressor Frequency
 ### 0x05 - Various Flags
-|   0   | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|-------|---|---|---|---|---|---|-----|---|---|----|----|----|----|----|----|----|
-| 0x01  |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
+|   0  | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|---|---|---|---|---|---|-----|---|---|----|----|----|----|----|----|----|
+| 0x05 |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
 * HWB : Hot Water Boost
+### 0x07 
+|   0   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x07  |   |   |   |   |   |   |   |   | P  |    |    |    |    |    |    |    |  
+* P : Heater Power (kW)
 ### 0x09 - Zone 1 & 2 Temperatures and Setpoints, Hot Water Setpoint
 | 0    |   1  |   2  | 3    | 4    | 5    | 6    | 7    | 8    |  9  |  10 |  11 | 12 | 13 | 14 | 15 | 16 |
 |------|------|------|------|------|------|------|------|------|-----|-----|-----|----|----|----|----|----|
-| 0x09 | Z1T  | Z1T  | Z2T  | Z2T  | Z1ST | Z1SP | Z2SP | Z2SP | LSP | LSP | HWD |    |    |    |    |    |
+| 0x09 | Z1T  | Z1T  | Z2T  | Z2T  | Z1ST | Z1SP | Z2SP | Z2SP | LSP | LSP | HWD |  ? | ?  |    |    |    |
 * Z1T  : Zone1 Target Temperature * 100
 * Z2T  : Zone2 Target Temperature * 100;
 * Z1SP : Zone 1 Flow SetFlow Setpoint * 100
@@ -182,16 +191,16 @@ Responses so far identified.
 ### 0x0b - Zone 1 & 2 and Outside Temperature
 |   0  |  1  |  2  | 3 | 4 | 5 | 6 |  7  |  8  | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|-----|-----|---|---|---|---|-----|-----|---|----|----|----|----|----|----|----|
-| 0x0b | Z1T | Z1T |   |   |   |   | Z2T | Z2T |   |    | O  |    |    |    |    |    |
+| 0x0b | Z1T | Z1T | ? | ? |   |   | Z2T | Z2T |   |    | O  |    |    |    |    |    |
 * Z1T : Zone1 Temperature * 100
 * Z2T : Zone2 Temperature * 100
 * O : Outside Temp  +40 x 2 
-### 0x0c - Compressor Flow Temps
+### 0x0c - Heater Flow Temps
 |  0   | 1  | 2  | 3 | 4  | 5  | 6 | 7  |  8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|----|----|---|----|----|---|----|----|---|----|----|----|----|----|----|----|
 | 0x0c | OF | OF |   | RF | RF |   | HW | HW |   |    |    |    |    |    |    |    |
-* OF : Compressor Water Out Flow  * 100
-* RF : Compressor Return Flow Temperature * 100
+* OF : Heater Water Out Flow  * 100
+* RF : Heater Return Flow Temperature * 100
 * HW : Hot Water Temperature * 100
 ### 0x0d - Boiler Temps
 |  0   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
@@ -199,6 +208,11 @@ Responses so far identified.
 | 0x0d | F | F |   | R | R |   |   |   |   |    |    |    |    |    |    |    |
 * F : Boiler Flow Temperature * 100;
 * R : Boiler Return Temperature * 100;
+### 0x0e - Unknown Temps
+|  0   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|------|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x0e |   |   |   |   |   |   |   |   |   |    |    |    |    |    |    |    |
+Several Unknown Temperatures
 ### 0x14 - Primary Cct Flow Rate
 |   0   | 1  | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |-------|----|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
@@ -232,3 +246,23 @@ Responses so far identified.
 | 0x28  |   |   |   | HM | HT |   |   |   |   |    |    |    |    |    |    |    |  
 * HM : Holiday Mode
 * HT : Hot Water Timer
+### 0x29 - 
+|   0   | 1 | 2 | 3 |  4  |  5  |  6  |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|-----|-----|-----|-----|---|---|----|----|----|----|----|----|----|
+| 0x29  |   |   |   | Z1T | Z1T | Z2T | Z2T |   |   |    |    |    |    |    |    |    |  
+* Z1T : Zone1 Temperature * 100
+* Z2T : Zone2 Temperature * 100
+### 0xA1 - Consumed Energy
+|   0   | 1 | 2 | 3 |  4  |  5  |  6  |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|-----|-----|-----|-----|---|---|----|----|----|----|----|----|----|
+| 0xA1  | Y | M | D | Heat|     |     |Cool |   |   |DHW |    |    |    |    |    |    |  
+* Y: Year
+* M: Month
+* D: Day
+### 0xA2 - Delivered Energy
+|   0   | 1 | 2 | 3 |  4   |  5  |  6  |  7   | 8 | 9 | 10  | 11 | 12 | 13 | 14 | 15 | 16 |
+|-------|---|---|---|------|-----|-----|------|---|---|-----|----|----|----|----|----|----|
+| 0xA2  | Y | M | D | Heat |     |     | Cool |   |   | DHW |    |    |    |    |    |    |  
+* Y: Year
+* M: Month
+* D: Day
