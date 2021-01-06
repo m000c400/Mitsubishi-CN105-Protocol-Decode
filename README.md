@@ -49,14 +49,14 @@ Active commands so far identified.
 | 0x32  | Flags | Z | P |   | DHW | HC1 | HC2 | DHWSP | DHWSP | Z1SP | Z1SP | Z2SP | Z2SP |    |    |    |  
 
 * Flags : Flags to Indicate which fields are active
-  * 0x80 : Zone 1 Temperature Setpoint
+  * 0x80 : Set Zone Setpoints, Byte[2] determines which Zones 
   * 0x40 : Unknown 
-  * 0x20 : Hotwater Setpoint
+  * 0x20 : Set Hotwater Setpoint
   * 0x10 : Unknown
-  * 0x08 : Heating Control Mode
-  * 0x04 : Hot Water Mode
+  * 0x08 : Set Heating Control Mode
+  * 0x04 : Set Hot Water Mode
   * 0x02 : Unknown
-  * 0x01 : Power
+  * 0x01 : Set System Power Power
 * Z : Zones the Command Applies to
   * 0x00 : Zone 1
   * 0x01 : Zone 2 ( Probably )
