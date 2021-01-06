@@ -40,13 +40,13 @@ Checksum = 0xfc - Sum ( PacketBytes[0..20]) ;
 Active commands so far identified.
 | Command | Brief Description |
 | ------- | ----------- |
-| 0x32 |  Set Options |
+| 0x32 |  Update Settings |
 | 0x34 | Hot Water |
 | 0x35 | Unknown |
 ### 0x32 - Set Options
-|   0   |   1   | 2 | 3 | 4 | 5 |  6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|-------|-------|---|---|---|---|----|-----|---|---|----|----|----|----|----|----|----|
-| 0x32  | Flags |   |   |   |   | HC |     |   |   |    |    |    |    |    |    |    |  
+|   0   |   1   | 2 | 3 | 4 |  5  |  6  |  7  |   8   |   9   |  10  |  11  | 12 | 13 | 14 | 15 | 16 |
+|-------|-------|---|---|---|-----|-----|-----|-------|-------|------|------|----|----|----|----|----|
+| 0x32  | Flags | Z | P |   | DHW | HC1 | HC2 | DHWSP | DHWSP | Z1SP | Z1SP |    |    |    |    |    |  
 
 * Flags : Flags to Indicate which fields are active
   * 0x80 : Zone 1 Temperature Setpoint
@@ -58,13 +58,26 @@ Active commands so far identified.
   * 0x02 : Unknown
   * 0x01 : Power
 
-* HC: Heating Control Mode
+* Z : Zones the Command Applies to
+  * 0x00 : Zone 1
+  * 0x01 : Zone 2 ( Probably )
+  * 0x02 : Both
+* P : System Power
+  * 0x00 : Standby
+  * 0x01 : Power On
+* DHW : Hot Water Mode
+  * 0x00 : Normal
+  * 0x01 : Eco
+* HC1 : Heating Control Mode Zone 1
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
-* HW - Hot Water Mode
-  * 0 : Normal
-  * 1 : Economy
+* HC2 : Heating Control Mode Zone 2
+  * 0 : Temperature Mode
+  * 1 : Flow Control Mode
+  * 2 : Compensation Curve Mode
+* DHWSP : Hot Water Setpoint (Temperature * 100)
+
 
 
 # Get Request - Packet Type 0x42
