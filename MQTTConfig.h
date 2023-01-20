@@ -31,6 +31,6 @@
 
 #define MQTT_LWT MQTT_BASETOPIC "/LWT"
 
-#define PQTT_USER  Set_Your_MQTT_User_Name_Here // Fill in below and delete this line
+#define MQTT_USER  Set_Your_MQTT_User_Name_Here // Fill in below and delete this line
 //#define MQTT_USER "USER"
 #define MQTT_PASS "PASS"
