@@ -33,7 +33,7 @@
 #define EXCONNECT_REQUEST  0x5B
 #define EXCONNECT_RESPONSE 0x7B
 
-#define TX_MESSAGE_SET_STATUS 0x032
+#define TX_MESSAGE_SETTINGS 0x032
 
 #define COMMANDSIZE 22 // 5 Byte Header + 16 Byte Payload  + 1 Byte Checksum
 #define HEADERSIZE 5
@@ -79,16 +79,23 @@ const char HolidayModetString[2][4] = {"Off", "On"};
 #define HOT_WATER_TIMER_OFF 1
 const char HotWaterTimerString[2][4] = {"On", "Off"};
 
+#define COMPRESSOR_NORMAL 0
+#define COMPRESSOR_STANDBY 1
+#define COMPRESSOR_DEFROST 2
+#define COMPRESSOR_WAIT 3
+const char COMPRESSORString[4][8] = {"Normal", "Standby", "Defrost", "Wait"};
+
+
 // System Flags
  
-#define SET_ZONE_SETPOINT   0x80
-#define UNKNOWN1               0x40 
-#define SET_HOT_WATER_SETPOINT 0x20
-#define UKNKOWN2               0x10
-#define SET_HEATING_CONTROL_MODE        0x08 
-#define SET_HOT_WATER_MODE      0x04
-#define UNKNOWN3               0x02
-#define SET_SYSTEM_POWER       0x01
+#define SET_ZONE_SETPOINT        0x80
+#define UNKNOWN1                 0x40 
+#define SET_HOT_WATER_SETPOINT   0x20
+#define UNKNOWN2                 0x10
+#define SET_HEATING_CONTROL_MODE 0x08 
+#define SET_HOT_WATER_MODE       0x04
+#define UNKNOWN3                 0x02
+#define SET_SYSTEM_POWER         0x01
 
 #define ZONE1 0x00
 #define ZONE2 0x01
@@ -111,12 +118,16 @@ typedef struct _EcodanStatus
 {
   //From Message 0x01
   struct tm DateTimeStamp;
+
+  //From Message 0x02
+  uint8_t Defrost;
   
   // From Message 0x04
   uint8_t CompressorFrequency;
   
   // From Message 0x05
   uint8_t HotWaterBoostActive;
+  uint8_t UnknownMSG5;
   
   // From Message 0x07
   uint8_t OutputPower;  
@@ -128,6 +139,8 @@ typedef struct _EcodanStatus
   float Zone2FlowTemperatureSetpoint;
   float LegionellaSetpoint;
   float HotWaterMaximumTempDrop;
+  float FlowTempMax;
+  float FlowTempMin;
   
   //From Message 0x0b
   float Zone1Temperature;
@@ -146,6 +159,9 @@ typedef struct _EcodanStatus
   
   //From Message 0x0e
   // Several Unused Temperatures
+  
+  //From Message 0x14
+  uint32_t RunHours;
   
   //From Message 0x14
   uint8_t PrimaryFlowRate;
@@ -185,7 +201,7 @@ class ECODANDECODER
 {
 public:
     ECODANDECODER(void);
-    void Process(uint8_t c);
+    uint8_t Process(uint8_t c);
 
     void CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize);
     void SetPayloadByte(uint8_t Data, uint8_t Location);
@@ -220,6 +236,7 @@ private:
     uint8_t  CheckSum(uint8_t *Buffer, uint8_t len);
 
     void Process0x01(uint8_t *Payload, EcodanStatus *Status);
+    void Process0x02(uint8_t *Payload, EcodanStatus *Status);
     void Process0x04(uint8_t *Payload, EcodanStatus *Status);
     void Process0x05(uint8_t *Payload, EcodanStatus *Status);
     void Process0x07(uint8_t *Payload, EcodanStatus *Status);
@@ -228,6 +245,7 @@ private:
     void Process0x0C(uint8_t *Payload, EcodanStatus *Status);
     void Process0x0D(uint8_t *Payload, EcodanStatus *Status);
     void Process0x0E(uint8_t *Payload, EcodanStatus *Status);
+    void Process0x13(uint8_t *Payload, EcodanStatus *Status);
     void Process0x14(uint8_t *Payload, EcodanStatus *Status);
     void Process0x26(uint8_t *Payload, EcodanStatus *Status);
     void Process0x28(uint8_t *Payload, EcodanStatus *Status);
