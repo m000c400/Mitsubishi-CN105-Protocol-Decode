@@ -262,7 +262,7 @@ void ECODANDECODER::Process0x09(uint8_t * Buffer, EcodanStatus *Status)
   fZone1TempSetpoint = ((float)ExtractUInt16(Buffer, 1) / 100);
   fZone2TempSetpoint = ((float)ExtractUInt16(Buffer, 3) / 100);
   fZ1FlowSetpoint = ((float)ExtractUInt16(Buffer, 5) / 100);
-  fZ1FlowSetpoint = ((float)ExtractUInt16(Buffer, 7) / 100);
+  fZ2FlowSetpoint = ((float)ExtractUInt16(Buffer, 7) / 100);
   fLegionellaSetpoint = ((float)ExtractUInt16(Buffer, 9) / 100);
 
   fHWTempDrop = ((float)(Buffer[11] - 40)) / 2;
@@ -338,7 +338,7 @@ void ECODANDECODER::Process0x13(uint8_t * Buffer, EcodanStatus *Status)
   uint32_t RunHours;
 
   RunHours = Buffer[4];
-  RunHours == RunHours << 8;
+  RunHours = RunHours << 8;
   RunHours += Buffer[5];
   RunHours *= 100;
   RunHours += Buffer[3];
