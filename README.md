@@ -77,12 +77,12 @@ Active commands so far identified.
   * 2 : Compensation Curve Mode
 * DHWSP : Hot Water Setpoint (Temperature * 100)
 * Z1SP : Zone 1 Setpoint (* 100)
-* Z2SP : Zone 1 Setpoint (* 100)
+* Z2SP : Zone 2 Setpoint (* 100)
 ### 0x35 - Set Zone 1 Setpoint 
 Identified so far, this must do far more that this!
 |   0   |   1  | 2 | 3 |   4  |  5   | 6 |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
 |-------|------|---|---|------|------|---|-----|-------|-------|------|------|------|------|----|----|----|
-| 0x35  | 0x02 |   |   | Z1SP | Z1SP |   |     |       |       |      |      |      |      |    |    |    |  
+| 0x35  | 0x02 |   |   | Z1SP | Z2SP |   |     |       |       |      |      |      |      |    |    |    |  
 * Z1SP : Zone 1 Setpoint (* 100)
 # Get Request - Packet Type 0x42
 ## Available Commands 
@@ -185,13 +185,13 @@ Responses so far identified.
 * Z1T  : Zone1 Target Temperature * 100
 * Z2T  : Zone2 Target Temperature * 100;
 * Z1SP : Zone 1 Flow SetFlow Setpoint * 100
-* Z2SP : Zone 3 Flow SetFlow Setpoint * 100
+* Z2SP : Zone 2 Flow SetFlow Setpoint * 100
 * LSP  : Legionella Setpoint * 100;
 * HWD  : DHW Max Temp Drop;
 ### 0x0b - Zone 1 & 2 and Outside Temperature
 |   0  |  1  |  2  | 3 | 4 | 5 | 6 |  7  |  8  | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|------|-----|-----|---|---|---|---|-----|-----|---|----|----|----|----|----|----|----|
-| 0x0b | Z1T | Z1T | ? | ? |   |   | Z2T | Z2T |   |    | O  |    |    |    |    |    |
+|------|-----|-----|-----|-----|---|---|---|---|---|----|----|----|----|----|----|----|
+| 0x0b | Z1T | Z1T | Z2T | Z2T |   |   |   |   |   |    | O  |    |    |    |    |    |
 * Z1T : Zone1 Temperature * 100
 * Z2T : Zone2 Temperature * 100
 * O : Outside Temp  +40 x 2 
