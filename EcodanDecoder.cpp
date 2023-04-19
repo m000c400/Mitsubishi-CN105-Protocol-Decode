@@ -284,9 +284,9 @@ void ECODANDECODER::Process0x0B(uint8_t * Buffer, EcodanStatus *Status)
   float fZone1, fZone2, fOutside;
 
   fZone1 = ((float)ExtractUInt16(Buffer, 1) / 100);
-  //Unknown = ((float)ExtractUInt16(Buffer, 3) / 100);
+  fZone2 = ((float)ExtractUInt16(Buffer, 3) / 100);
   //Unknown = ((float)ExtractUInt16(Buffer, 5) / 100);
-  fZone2 = ((float)ExtractUInt16(Buffer, 7) / 100);
+  //Unknown = ((float)ExtractUInt16(Buffer, 7) / 100);
   //Unknown = ((float)ExtractUInt16(Buffer, 9) / 100);
   fOutside = ((float)Buffer[11] / 2) - 40;
 
@@ -599,4 +599,18 @@ void ECODANDECODER::EncodeSystemUpdate(uint8_t Flags, float Zone1TempSetpoint, f
     TxMessage.Payload[12] = UpperByte;
     TxMessage.Payload[13] = LowerByte;
   }
+}
+
+
+void ECODANDECODER::EncodeDHW(uint8_t OnOff)
+{
+  // DHW Boost Active
+
+  TxMessage.Payload[0] = TX_MESSAGE_SETTING_DHW;
+  TxMessage.Payload[1] = TX_MESSAGE_SETTING_DHW_Flag;
+  //TxMessage.Payload[2] = Unused;
+  TxMessage.Payload[3] = OnOff;
+  //TxMessage.Payload[4] = Unknown;
+  //TxMessage.Payload[5] = HolidayMode?;
+
 }
