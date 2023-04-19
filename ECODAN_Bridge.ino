@@ -72,7 +72,7 @@ String MQTTCommandSystemTemp = MQTT_COMMAND_SYSTEM_TEMP;
 
 int RxPin = 14; //Rx
 int TxPin = 16; //Tx
-int Activity_LED = 2;
+int Activity_LED = 2;   // Fancy Extras
 int Red_RGB_LED = 15;
 int Green_RGB_LED = 12;
 int Blue_RGB_LED = 13;
@@ -81,7 +81,7 @@ void setup()
 {
   //DEBUGPORT.begin(DEBUGBAUD);
   HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, RxPin, TxPin); // Rx, Tx
-  //pinMode(RxPin, INPUT_PULLUP);    // Commented out for testing because we get nothing :(
+  //pinMode(RxPin, INPUT_PULLUP);    // Not required on ESP8266 Witty, not sure on others
   pinMode(Activity_LED,OUTPUT);   // Onboard LED
   pinMode(Red_RGB_LED,OUTPUT);    // Red (RGB) LED
   pinMode(Green_RGB_LED,OUTPUT);  // Green (RGB) LED
