@@ -194,7 +194,16 @@ void ECODAN::SetZoneCurveSetpoint(uint8_t Target, uint8_t Zones)
   DeviceStream->write(Buffer, CommandSize);
 }
 
-
+void ECODAN::ForceDHW(uint8_t OnOff)
+{
+  uint8_t Buffer[COMMANDSIZE];
+  uint8_t CommandSize = 0;
+  
+  ECODANDECODER::CreateBlankTxMessage(SET_REQUEST, 0x10);
+  ECODANDECODER::EncodeDHW(OnOff);
+  CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
+  DeviceStream->write(Buffer, CommandSize);
+}
 
 void ECODAN::SetHotWaterSetpoint(uint8_t Target)
 {
