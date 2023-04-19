@@ -84,7 +84,7 @@ Identified so far, this must do far more that this!
 |   0   |   1  | 2 |     3      | 4 |  5   | 6 |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
 |-------|------|---|------------|---|------|---|-----|-------|-------|------|------|------|------|----|----|----|
 | 0x34  | 0x01 |   |  DHWBoost  |   | HolM |   |     |       |       |      |      |      |      |    |    |    |  
-* DHWBoost : Hot Water Boost On/Off (0 or 1) - Untested
+* DHWBoost : Hot Water Boost On/Off (0 or 1)
 * HolM : Holiday Mode On/Off (0 or 1) - Untested
 ### 0x35 - Set Zone 1 Setpoint 
 Identified so far, this must do far more that this!
