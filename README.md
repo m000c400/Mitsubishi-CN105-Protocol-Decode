@@ -93,7 +93,7 @@ Active commands so far identified, 0x00 to 0xff. Commands not listed appear to g
 | 0x02 | Unknown |
 | 0x03 | Unknown |
 | 0x04 | Unknown - Empty Response |
-| 0x05 | Hot Water Boot Flag |
+| 0x05 | Hot Water Boost Flag |
 | 0x06 | Unknown - Empty Response |
 | 0x06 | Unknown - Empty Response |
 | 0x07 | Unknown |
