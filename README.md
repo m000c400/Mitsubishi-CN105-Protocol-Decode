@@ -59,8 +59,8 @@ Active commands so far identified.
   * 0x01 : Set System Power Power
 * Z : Zones the Command Applies to
   * 0x00 : Zone 1
-  * 0x01 : Zone 2 ( Probably )
-  * 0x02 : Both
+  * 0x01 : Zone 2 ( Not working )
+  * 0x02 : Both ( Working )
 * P : System Power
   * 0x00 : Standby
   * 0x01 : Power On
