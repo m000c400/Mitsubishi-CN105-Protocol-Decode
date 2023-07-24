@@ -59,9 +59,8 @@ Active commands so far identified.
   * 0x01 : Set System Power Power
 * Z : Zones the Command Applies to
   * 0x00 : Zone 1
-  * 0x01 : Nothing
+  * 0x01 : Zone 2 ( Probably )
   * 0x02 : Both
-  * 0x03 : Zone 2
 * P : System Power
   * 0x00 : Standby
   * 0x01 : Power On
@@ -78,19 +77,12 @@ Active commands so far identified.
   * 2 : Compensation Curve Mode
 * DHWSP : Hot Water Setpoint (Temperature * 100)
 * Z1SP : Zone 1 Setpoint (* 100)
-* Z2SP : Zone 2 Setpoint (* 100)
-### 0x34 - Hot Water and Holiday Mode 
-Identified so far, this must do far more that this!
-|   0   |   1  | 2 |     3      | 4 |  5   | 6 |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
-|-------|------|---|------------|---|------|---|-----|-------|-------|------|------|------|------|----|----|----|
-| 0x34  | 0x01 |   |  DHWBoost  |   | HolM |   |     |       |       |      |      |      |      |    |    |    |  
-* DHWBoost : Hot Water Boost On/Off (0 or 1)
-* HolM : Holiday Mode On/Off (0 or 1) - Untested
+* Z2SP : Zone 1 Setpoint (* 100)
 ### 0x35 - Set Zone 1 Setpoint 
 Identified so far, this must do far more that this!
 |   0   |   1  | 2 | 3 |   4  |  5   | 6 |  7  |   8   |   9   |  10  |  11  |  12  |  13  | 14 | 15 | 16 |
 |-------|------|---|---|------|------|---|-----|-------|-------|------|------|------|------|----|----|----|
-| 0x35  | 0x02 |   |   | Z1SP | Z2SP |   |     |       |       |      |      |      |      |    |    |    |  
+| 0x35  | 0x02 |   |   | Z1SP | Z1SP |   |     |       |       |      |      |      |      |    |    |    |  
 * Z1SP : Zone 1 Setpoint (* 100)
 # Get Request - Packet Type 0x42
 ## Available Commands 
@@ -101,7 +93,7 @@ Active commands so far identified, 0x00 to 0xff. Commands not listed appear to g
 | 0x02 | Unknown |
 | 0x03 | Unknown |
 | 0x04 | Unknown - Empty Response |
-| 0x05 | Hot Water Boost Flag |
+| 0x05 | Hot Water Boot Flag |
 | 0x06 | Unknown - Empty Response |
 | 0x06 | Unknown - Empty Response |
 | 0x07 | Unknown |
@@ -180,7 +172,7 @@ Responses so far identified.
 |   0  | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |------|---|---|---|---|---|---|-----|---|---|----|----|----|----|----|----|----|
 | 0x05 |   |   |   |   |   |   | HWB |   |   |    |    |    |    |    |    |    |  
-* HWB : Hot Water Boost ("On"/"Off" and "__," for Keeping at Legionella setpoint for time duration)
+* HWB : Hot Water Boost
 ### 0x07 
 |   0   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
 |-------|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
@@ -193,13 +185,13 @@ Responses so far identified.
 * Z1T  : Zone1 Target Temperature * 100
 * Z2T  : Zone2 Target Temperature * 100;
 * Z1SP : Zone 1 Flow SetFlow Setpoint * 100
-* Z2SP : Zone 2 Flow SetFlow Setpoint * 100
+* Z2SP : Zone 3 Flow SetFlow Setpoint * 100
 * LSP  : Legionella Setpoint * 100;
 * HWD  : DHW Max Temp Drop;
 ### 0x0b - Zone 1 & 2 and Outside Temperature
 |   0  |  1  |  2  | 3 | 4 | 5 | 6 |  7  |  8  | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
-|------|-----|-----|-----|-----|---|---|---|---|---|----|----|----|----|----|----|----|
-| 0x0b | Z1T | Z1T | Z2T | Z2T |   |   |   |   |   |    | O  |    |    |    |    |    |
+|------|-----|-----|---|---|---|---|-----|-----|---|----|----|----|----|----|----|----|
+| 0x0b | Z1T | Z1T | ? | ? |   |   | Z2T | Z2T |   |    | O  |    |    |    |    |    |
 * Z1T : Zone1 Temperature * 100
 * Z2T : Zone2 Temperature * 100
 * O : Outside Temp  +40 x 2 

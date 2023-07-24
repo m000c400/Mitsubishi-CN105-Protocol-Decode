@@ -161,13 +161,13 @@ void ECODAN::KeepAlive(void)
   DeviceStream->write(Buffer, CommandSize);
 }
 
-void ECODAN::SetZoneTempSetpoint(uint8_t Target, uint8_t Zones)
+void ECODAN::SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones)
 {
   uint8_t Buffer[COMMANDSIZE];
   uint8_t CommandSize = 0;
   
   ECODANDECODER::CreateBlankTxMessage(SET_REQUEST, 0x10);
-  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Target, Target, Zones, 0, HEATING_CONTROL_MODE_ZONE_TEMP, HEATING_CONTROL_MODE_ZONE_TEMP, 0, 1);
+  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Zone1Target, Zone2Target, Zones, 0, HEATING_CONTROL_MODE_ZONE_TEMP, HEATING_CONTROL_MODE_ZONE_TEMP, 0, 1);
   CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
   DeviceStream->write(Buffer, CommandSize);
 }

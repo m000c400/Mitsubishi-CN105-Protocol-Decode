@@ -102,10 +102,16 @@ const char COMPRESSORString[4][8] = {"Normal", "Standby", "Defrost", "Wait"};
 #define SET_SYSTEM_POWER         0x01
 #define SET_HOT_WATER_BOOST      0x01
 
-#define ZONE1 0x00
-//#define ZONE2 0x01
-#define BOTH  0x02
-#define ZONE2 0x03
+#define ZONE1 0x00    // Zone1
+#define ZONE2 0x03    // Zone2
+#define BOTH 0x02     // BOTH
+//#define BOTH 0x03   // BOTH
+//#define ZONE1 0x04  // Zone1
+//#define ZONE1 0x05  // Zone1
+//#define ZONE1 0x06  // Zone1
+//#define BOTH 0x07   // BOTH
+//#define ZONE1 0x08  // Zone1
+//#define ZONE1 0x10  // Zone1
 
 
 
