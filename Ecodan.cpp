@@ -107,7 +107,7 @@ void ECODAN::StatusStateMachine(void)
 
   if (CurrentMessage != 0)
   {
-    //DEBUG_PRINT("Send Message "); DEBUG_PRINTLN(CurrentMessage);
+    DEBUG_PRINT("Send Message "); DEBUG_PRINTLN(CurrentMessage);
     ECODANDECODER::CreateBlankTxMessage(GET_REQUEST, 0x10);
     ECODANDECODER::SetPayloadByte(ActiveCommand[CurrentMessage], 0);
     CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
@@ -172,24 +172,24 @@ void ECODAN::SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8
   DeviceStream->write(Buffer, CommandSize);
 }
 
-void ECODAN::SetZoneFlowSetpoint(uint8_t Target, uint8_t Zones)
+void ECODAN::SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones)
 {
   uint8_t Buffer[COMMANDSIZE];
   uint8_t CommandSize = 0;
   
   ECODANDECODER::CreateBlankTxMessage(SET_REQUEST, 0x10);
-  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Target, Target, Zones, 0, HEATING_CONTROL_MODE_FLOW_TEMP, HEATING_CONTROL_MODE_FLOW_TEMP, 0, 1);
+  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Zone1Target, Zone2Target, Zones, 0, HEATING_CONTROL_MODE_FLOW_TEMP, HEATING_CONTROL_MODE_FLOW_TEMP, 0, 1);
   CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
   DeviceStream->write(Buffer, CommandSize);
 }
 
-void ECODAN::SetZoneCurveSetpoint(uint8_t Target, uint8_t Zones)
+void ECODAN::SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones)
 {
   uint8_t Buffer[COMMANDSIZE];
   uint8_t CommandSize = 0;
   
   ECODANDECODER::CreateBlankTxMessage(SET_REQUEST, 0x10);
-  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Target, Target, Zones, 0, HEATING_CONTROL_MODE_COMPENSATION, HEATING_CONTROL_MODE_COMPENSATION, 0, 1);
+  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Zone1Target, Zone2Target, Zones, 0, HEATING_CONTROL_MODE_COMPENSATION, HEATING_CONTROL_MODE_COMPENSATION, 0, 1);
   CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
   DeviceStream->write(Buffer, CommandSize);
 }

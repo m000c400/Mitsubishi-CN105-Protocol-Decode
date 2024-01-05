@@ -59,6 +59,7 @@ void Zone1Report(void);
 void Zone1Report(void);
 void HotWaterReport(void);
 void SystemReport(void);
+void AdvancedReport(void);
 void TestReport(void);
 
 TimerCallBack HeatPumpQuery1(500, HeatPumpQueryStateEngine);
@@ -132,7 +133,7 @@ void loop() {
       ESP.reset();
     }  // Wait for 5 mins to try reconnects then force restart
   } else {
-    analogWrite(Green_RGB_LED, 64);  // Green LED on, 25% brightness
+    analogWrite(Green_RGB_LED, 30);  // Green LED on, 25% brightness
   }
 
   if (digitalRead(Reset_Button) == LOW) {  // Inverted (Pushed is LOW)
@@ -160,13 +161,13 @@ void HeatPumpQueryStateEngine(void) {
   if (HeatPump.UpdateComplete()) {
     DEBUG_PRINTLN("Update Complete");
     digitalWrite(Green_RGB_LED, HIGH);  // Flash the Green LED full brightness
-    delay(10);
-    digitalWrite(Green_RGB_LED, LOW);
+    delay(10);                          // Hold for 10ms then WiFi brightness will return it to 25%
     if (MQTTReconnect()) {
       Zone1Report();
       Zone2Report();
       HotWaterReport();
       SystemReport();
+      AdvancedReport();
       TestReport();
       StatusReport();
     }
@@ -188,12 +189,12 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINTLN(Payload.c_str());
 
   if (Topic == MQTTCommandZone1TempSetpoint){HeatPump.SetZoneTempSetpoint(Payload.toFloat(), HeatPump.Status.Zone2TemperatureSetpoint, ZONE1);}
-  if (Topic == MQTTCommandZone1FlowSetpoint){HeatPump.SetZoneFlowSetpoint(Payload.toInt(), ZONE1);}
-  if (Topic == MQTTCommandZone1CurveSetpoint){HeatPump.SetZoneCurveSetpoint(Payload.toInt(), ZONE1);}
+  if (Topic == MQTTCommandZone1FlowSetpoint){HeatPump.SetZoneFlowSetpoint(Payload.toInt(), HeatPump.Status.Zone2FlowTemperatureSetpoint, ZONE1);}
+  if (Topic == MQTTCommandZone1CurveSetpoint){HeatPump.SetZoneCurveSetpoint(Payload.toInt(), Payload.toInt(), ZONE1);}
 
   if (Topic == MQTTCommandZone2TempSetpoint){HeatPump.SetZoneTempSetpoint(HeatPump.Status.Zone1TemperatureSetpoint, Payload.toFloat(), ZONE2);}
-  if (Topic == MQTTCommandZone2FlowSetpoint){HeatPump.SetZoneFlowSetpoint(Payload.toInt(), ZONE2);}
-  if (Topic == MQTTCommandZone2CurveSetpoint){HeatPump.SetZoneCurveSetpoint(Payload.toInt(), ZONE2);}
+  if (Topic == MQTTCommandZone2FlowSetpoint){HeatPump.SetZoneFlowSetpoint(HeatPump.Status.Zone1FlowTemperatureSetpoint, Payload.toInt(), ZONE2);}
+  if (Topic == MQTTCommandZone2CurveSetpoint){HeatPump.SetZoneCurveSetpoint(Payload.toInt(), Payload.toInt(), ZONE2);}
 
 
   if (Topic == MQTTCommandHotwaterBoost) {
@@ -218,15 +219,17 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("Temp Trigger");
     HeatPump.Scratch(Payload.toInt());
   }
-  HeatPump.TriggerStatusStateMachine();       // Trigger update of heat pump 
+  HeatPump.TriggerStatusStateMachine();       // Trigger update of heat pump
 }
 
 void Zone1Report(void) {
-  StaticJsonDocument<256> doc;
-  char Buffer[256];
+  StaticJsonDocument<512> doc;
+  char Buffer[512];
 
   doc[F("Temperature")] = HeatPump.Status.Zone1Temperature;
   doc[F("Setpoint")] = HeatPump.Status.Zone1TemperatureSetpoint;
+  doc["HeatingControlMode"] = HeatingControlModeString[HeatPump.Status.HeatingControlModeZ1];
+  doc["FSP"] = HeatPump.Status.Zone1FlowTemperatureSetpoint;
 
   serializeJson(doc, Buffer);
 
@@ -235,11 +238,13 @@ void Zone1Report(void) {
 }
 
 void Zone2Report(void) {
-  StaticJsonDocument<256> doc;
-  char Buffer[256];
+  StaticJsonDocument<512> doc;
+  char Buffer[512];
 
   doc[F("Temperature")] = HeatPump.Status.Zone2Temperature;
   doc[F("Setpoint")] = HeatPump.Status.Zone2TemperatureSetpoint;
+  doc["HeatingControlMode"] = HeatingControlModeString[HeatPump.Status.HeatingControlModeZ2];
+  doc["FSP"] = HeatPump.Status.Zone2FlowTemperatureSetpoint;
 
   serializeJson(doc, Buffer);
   MQTTClient.publish(MQTT_STATUS_ZONE2, Buffer, true);
@@ -264,21 +269,43 @@ void HotWaterReport(void) {
 }
 
 void SystemReport(void) {
-  StaticJsonDocument<256> doc;
-  char Buffer[256];
+  StaticJsonDocument<512> doc;
+  char Buffer[512];
 
   doc["HeaterFlow"] = HeatPump.Status.HeaterOutputFlowTemperature;
   doc["HeaterReturn"] = HeatPump.Status.HeaterReturnFlowTemperature;
   doc["HeaterSetpoint"] = HeatPump.Status.HeaterFlowSetpoint;
   doc["OutsideTemp"] = HeatPump.Status.OutsideTemperature;
+  doc["Defrost"] = HeatPump.Status.Defrost;
   doc["HeaterPower"] = HeatPump.Status.OutputPower;
+  doc["Compressor"] = HeatPump.Status.CompressorFrequency;
   doc["SystemPower"] = SystemPowerModeString[HeatPump.Status.SystemPowerMode];
   doc["SystemOperationMode"] = SystemOperationModeString[HeatPump.Status.SystemOperationMode];
-  doc["HeatingControlMode"] = HeatingControlModeString[HeatPump.Status.HeatingControlMode];
   doc["FlowRate"] = HeatPump.Status.PrimaryFlowRate;
+  doc["RunHours"] = HeatPump.Status.RunHours;
 
   serializeJson(doc, Buffer);
   MQTTClient.publish(MQTT_STATUS_SYSTEM, Buffer, true);
+  //DEBUG_PRINTLN(Buffer);
+}
+
+
+void AdvancedReport(void) {
+  StaticJsonDocument<512> doc;
+  char Buffer[512];
+
+  doc["CHEAT"] = HeatPump.Status.ConsumedHeatingEnergy;
+  doc["CDHW"] = HeatPump.Status.ConsumedHotWaterEnergy;
+  doc["DHEAT"] = HeatPump.Status.DeliveredHeatingEnergy;
+  doc["DDHW"] = HeatPump.Status.DeliveredHotWaterEnergy;
+  doc["FlowTMax"] = HeatPump.Status.FlowTempMax;
+  doc["FlowTMin"] = HeatPump.Status.FlowTempMin;
+  doc["PrimaryFlowRate"] = HeatPump.Status.PrimaryFlowRate;
+  doc["BoilerFlow"] = HeatPump.Status.ExternalBoilerFlowTemperature;
+  doc["BoilerReturn"] = HeatPump.Status.ExternalBoilerReturnTemperature;
+
+  serializeJson(doc, Buffer);
+  MQTTClient.publish(MQTT_STATUS_ADVANCED, Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -286,16 +313,17 @@ void TestReport(void) {
   StaticJsonDocument<512> doc;
   char Buffer[512];
 
-  doc["Z1FSP"] = HeatPump.Status.Zone1FlowTemperatureSetpoint;
-  doc["CHEAT"] = HeatPump.Status.ConsumedHeatingEnergy;
-  doc["CDHW"] = HeatPump.Status.ConsumedHotWaterEnergy;
-  doc["DHEAT"] = HeatPump.Status.DeliveredHeatingEnergy;
-  doc["DDHW"] = HeatPump.Status.DeliveredHotWaterEnergy;
-  doc["Compressor"] = HeatPump.Status.CompressorFrequency;
-  doc["RunHours"] = HeatPump.Status.RunHours;
-  doc["FlowTMax"] = HeatPump.Status.FlowTempMax;
-  doc["FlowTMin"] = HeatPump.Status.FlowTempMin;
-  doc["Defrost"] = HeatPump.Status.Defrost;
+  doc["Unknown1"] = HeatPump.Status.Unknown1Active;
+  doc["Unknown2"] = HeatPump.Status.Unknown2Active;
+  doc["Unknown3"] = HeatPump.Status.Unknown3Active;
+  doc["Unknown4"] = HeatPump.Status.Unknown4Active;
+  doc["Unknown5"] = HeatPump.Status.Unknown5Active;
+  doc["Unknown6"] = HeatPump.Status.Unknown6Active;
+  doc["Unknown7"] = HeatPump.Status.Unknown7Active;
+  doc["Unknown8"] = HeatPump.Status.Unknown8Active;
+  doc["Unknown9"] = HeatPump.Status.Unknown9Active;
+  doc["Unknown10"] = HeatPump.Status.Unknown10Active;
+  doc["Unknown11"] = HeatPump.Status.Unknown11Active;
 
   serializeJson(doc, Buffer);
   MQTTClient.publish(MQTT_STATUS_TEST, Buffer, true);

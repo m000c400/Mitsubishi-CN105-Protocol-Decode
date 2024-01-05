@@ -46,7 +46,7 @@
 #define PREAMBLESIZE 2
 
 #define HOT_WATER_BOOST_OFF 0
-#define HOT_WATER_BOOST_OON 1
+#define HOT_WATER_BOOST_ON 1
 const char HotWaterBoostStr[2][4] = {"Off", "On"};
 
 #define SYSTEM_POWER_MODE_STANDBY 0
@@ -181,13 +181,16 @@ typedef struct _EcodanStatus
   uint8_t SystemPowerMode;
   uint8_t SystemOperationMode;
   uint8_t HotWaterControlMode;
-  uint8_t HeatingControlMode;
+  uint8_t HeatingControlModeZ1;
+  uint8_t HeatingControlModeZ2;
   float HotWaterSetpoint;
   float HeaterFlowSetpoint;
   
   //From Message 0x28
   uint8_t HotWaterTimerActive;
   uint8_t HolidayModeActive;
+  uint8_t Unknown1Active, Unknown2Active, Unknown3Active, Unknown4Active, Unknown5Active, Unknown6Active, Unknown7Active, Unknown8Active, Unknown9Active, Unknown10Active, Unknown11Active; 
+
   
   //From Message 0x29
   //float Zone1TemperatureSetpoint;  Already Defined Above

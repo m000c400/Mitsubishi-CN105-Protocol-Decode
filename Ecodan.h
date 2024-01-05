@@ -34,8 +34,8 @@ class ECODAN : public ECODANDECODER
     uint8_t UpdateComplete(void);
     
     void SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
-    void SetZoneFlowSetpoint(uint8_t Target, uint8_t Zones);
-    void SetZoneCurveSetpoint(uint8_t Target, uint8_t Zones);
+    void SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
+    void SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
     void ForceDHW(uint8_t OnOff);
     
     void SetHotWaterSetpoint(uint8_t Target);
