@@ -89,8 +89,7 @@ void ECODAN::SetStream(Stream *HeatPumpStream)
 
 void ECODAN::TriggerStatusStateMachine(void)
 {
-  DEBUG_PRINT("\e[1;1H\e[2J");
-  //DEBUG_PRINT("\e[1;1H");
+  DEBUG_PRINTLN("\e[1;1H\e[2J");              // Clear terminal
   DEBUG_PRINTLN("Triggering HeatPump Query");
   if(!Connected)
   {
