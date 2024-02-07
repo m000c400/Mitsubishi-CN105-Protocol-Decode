@@ -10,6 +10,7 @@
 #define MQTT_STATUS_HOTWATER MQTT_STATUS "/HotWater"
 #define MQTT_STATUS_SYSTEM MQTT_STATUS "/System"
 #define MQTT_STATUS_TEST MQTT_STATUS "/Test"
+#define MQTT_STATUS_ADVANCED MQTT_STATUS "/Advanced"
 #define MQTT_STATUS_WIFISTATUS MQTT_STATUS "/WiFiStatus"
 
 #define MQTT_COMMAND_ZONE1 MQTT_COMMAND "/Zone1"
@@ -53,11 +54,11 @@ String HostName;
 
 // Here you can pre-set the settings for the MQTT connection. The settings can later be changed via Wifi Manager.
 struct MqttSettings {
-  char clientId[20] = "Pre-PopulatedClientName";
-  char hostname[40] = "Pre-PopulatedIP";
+  char clientId[20] = "Ecodan Bridge";
+  char hostname[40] = "IPorDNS";
   char port[6] = "1883";
-  char user[20] = "Pre-PopulatedUsername";
-  char password[30] = "Pre-PopulatedPassword";              // 30 Char Max
+  char user[20] = "Username";
+  char password[30] = "Password";              // 30 Char Max
   char wm_mqtt_client_id_identifier[15] = "mqtt_client_id";
   char wm_mqtt_hostname_identifier[14] = "mqtt_hostname";
   char wm_mqtt_port_identifier[10] = "mqtt_port";
@@ -71,7 +72,7 @@ MqttSettings mqttSettings;
 
 void readSettingsFromConfig() {
   //clean FS for testing
-  //SPIFFS.format();
+  SPIFFS.format();
 
   //read configuration from FS json
   Serial.println("mounting FS...");
@@ -132,7 +133,7 @@ void initializeWifiManager() {
   WiFiManager wifiManager;
 
   // Reset Wifi settings for testing
-  //wifiManager.resetSettings();
+  wifiManager.resetSettings();
 
   //set config save notify callback
   wifiManager.setSaveConfigCallback(saveConfigCallback);
