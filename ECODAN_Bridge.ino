@@ -43,7 +43,7 @@ SoftwareSerial SwSerial;
 WiFiClient NetworkClient;
 PubSubClient MQTTClient(NetworkClient);
 ESPTelnet TelnetServer;
-WiFiManager MyWifiManager;
+WiFiManager wifiManager;
 
 #include "config.h"
 #include "TimerCallBack.h"
@@ -121,6 +121,7 @@ void loop() {
 
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(Green_RGB_LED, LOW);  // Turn the Green LED Off
+    digitalWrite(Red_RGB_LED, HIGH);  // Turn the Red LED On
     if (WiFiOneShot == 1) {
       wifipreviousMillis = millis();
       WiFiOneShot = 0;
@@ -139,6 +140,7 @@ void loop() {
     }  // Wait for 5 mins to try reconnects then force restart
   } else {
     analogWrite(Green_RGB_LED, 30);  // Green LED on, 25% brightness
+    digitalWrite(Red_RGB_LED, LOW);  // Turn the Red LED Off
   }
 
   if (digitalRead(Reset_Button) == LOW) {  // Inverted (Pushed is LOW)

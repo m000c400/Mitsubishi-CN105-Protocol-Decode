@@ -54,7 +54,7 @@ String HostName;
 
 // Here you can pre-set the settings for the MQTT connection. The settings can later be changed via Wifi Manager.
 struct MqttSettings {
-  char clientId[20] = "Ecodan Bridge";
+  char clientId[20] = "EcodanBridge";
   char hostname[40] = "IPorDNS";
   char port[6] = "1883";
   char user[20] = "Username";
@@ -72,7 +72,7 @@ MqttSettings mqttSettings;
 
 void readSettingsFromConfig() {
   //clean FS for testing
-  SPIFFS.format();
+  //SPIFFS.format();
 
   //read configuration from FS json
   Serial.println("mounting FS...");
@@ -130,10 +130,9 @@ void initializeWifiManager() {
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
 
   // Reset Wifi settings for testing
-  wifiManager.resetSettings();
+  //wifiManager.resetSettings();
 
   //set config save notify callback
   wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -145,9 +144,6 @@ void initializeWifiManager() {
   wifiManager.addParameter(&custom_mqtt_user);
   wifiManager.addParameter(&custom_mqtt_pass);
 
-  //reset settings - for testing
-  //wifiManager.resetSettings();
-
   //set minimum quality of signal so it ignores AP's under that quality
   //defaults to 8%
   //wifiManager.setMinimumSignalQuality();
@@ -157,9 +153,9 @@ void initializeWifiManager() {
   HostName += String(ESP.getChipId(), HEX);
   WiFi.hostname(HostName);
 
-  wifiManager.setConfigPortalTimeout(180);  // Timeout before launching the config portal
-  wifiManager.setConnectTimeout(180);       // Retry
-  if (wifiManager.getWiFiIsSaved()) { wifiManager.setEnableConfigPortal(false); }
+  wifiManager.setConfigPortalTimeout(120);  // Timeout before launching the config portal
+  //wifiManager.setConnectTimeout(30);       // Retry
+  //if (wifiManager.getWiFiIsSaved()) { wifiManager.setEnableConfigPortal(false); }
   if (!wifiManager.autoConnect("Ecodan Bridge AP")) {
     Serial.println("failed to connect and hit timeout");
     delay(3000);
