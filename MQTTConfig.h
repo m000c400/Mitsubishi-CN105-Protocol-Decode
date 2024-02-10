@@ -274,6 +274,7 @@ uint8_t MQTTReconnect() {
 
 void handleMqttState() {
   if (!MQTTClient.connected()) {
+    digitalWrite(Red_RGB_LED, HIGH);       // Add the Red LED to the Green LED = Orange
     MQTTReconnect();
   }
   MQTTClient.loop();
