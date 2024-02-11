@@ -107,7 +107,7 @@ int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 void setup() {
   WiFi.mode(WIFI_STA);  // explicitly set mode, esp defaults to STA+AP
   // put your setup code here, to run once:
-  Serial.begin(115200);
+  //Serial.begin(115200);
   DEBUGPORT.begin(DEBUGBAUD);
   HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, RxPin, TxPin);  // Rx, Tx
   //pinMode(RxPin, INPUT_PULLUP);  // Commented out for testing because we get nothing :(

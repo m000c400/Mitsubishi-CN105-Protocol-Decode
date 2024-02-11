@@ -58,24 +58,22 @@ void readSettingsFromConfig() {
   //LittleFS.format();
 
   // Read configuration from LittleFS JSON
-  Serial.println("Mounting File System...");
+  DEBUG_PRINTLN("Mounting File System...");
   if (LittleFS.begin()) {
-    Serial.println("Mounted File System");
+    DEBUG_PRINTLN("Mounted File System");
     if (LittleFS.exists("/config.json")) {
       //file exists, reading and loading
-      Serial.println("Reading config file");
+      DEBUG_PRINTLN("Reading config file");
       File configFile = LittleFS.open("/config.json", "r");
       if (configFile) {
-        Serial.println("Opened config file");
-        //StaticJsonDocument<1024> doc;
+        DEBUG_PRINTLN("Opened config file");
         JsonDocument doc;
-
         DeserializationError error = deserializeJson(doc, configFile);
         if (error) {
-          Serial.print("Failed to read file: ");
-          Serial.println(error.c_str());
+          DEBUG_PRINT("Failed to read file: ");
+          DEBUG_PRINTLN(error.c_str());
         } else {
-          Serial.println("Parsed JSON");
+          DEBUG_PRINTLN("Parsed JSON");
 
           strcpy(mqttSettings.clientId, doc[mqttSettings.wm_mqtt_client_id_identifier]);
           strcpy(mqttSettings.hostname, doc[mqttSettings.wm_mqtt_hostname_identifier]);
@@ -86,30 +84,29 @@ void readSettingsFromConfig() {
       }
       configFile.close();
     } else {
-      Serial.println("No config file exists, use placeholder values");
+      DEBUG_PRINTLN("No config file exists, use placeholder values");
     }
   } else {
-    Serial.println("Failed to mount File System");
+    DEBUG_PRINTLN("Failed to mount File System");
   }
 }
 
 void saveConfig() {
 
   // Read MQTT Portal Values for save to file system
-  Serial.println("Copying Portal Values...");
+  DEBUG_PRINTLN("Copying Portal Values...");
   strcpy(mqttSettings.clientId, custom_mqtt_client_id.getValue());
   strcpy(mqttSettings.hostname, custom_mqtt_server.getValue());
   strcpy(mqttSettings.port, custom_mqtt_port.getValue());
   strcpy(mqttSettings.user, custom_mqtt_user.getValue());
   strcpy(mqttSettings.password, custom_mqtt_pass.getValue());
 
-  Serial.print("Saving config... ");
+  DEBUG_PRINT("Saving config... ");
   File configFile = LittleFS.open("/config.json", "w");
   if (!configFile) {
-    Serial.println("[FAILED] Unable to open config file for writing");
+    DEBUG_PRINTLN("[FAILED] Unable to open config file for writing");
   } else {
     JsonDocument doc;
-    //StaticJsonDocument<1024> doc;
     doc[mqttSettings.wm_mqtt_client_id_identifier] = mqttSettings.clientId;
     doc[mqttSettings.wm_mqtt_hostname_identifier] = mqttSettings.hostname;
     doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
@@ -117,11 +114,11 @@ void saveConfig() {
     doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
 
     if (serializeJson(doc, configFile) == 0) {
-      Serial.println("[FAILED]");
+      DEBUG_PRINTLN("[FAILED]");
     } else {
-      Serial.println("[DONE]");
+      DEBUG_PRINTLN("[DONE]");
       serializeJson(doc, Serial);
-      Serial.println();
+      DEBUG_PRINTLN();
     }
   }
   configFile.close();
@@ -165,21 +162,21 @@ void initializeWifiManager() {
   wifiManager.setSaveConfigCallback(saveConfigCallback);  // Set config save notify callback
 
   if (!wifiManager.autoConnect("Ecodan Bridge AP")) {
-    Serial.println("Failed to connect and hit timeout");
+    DEBUG_PRINTLN("Failed to connect and hit timeout");
     delay(3000);
     ESP.reset();
   }
 
-  Serial.println("WiFi Connected!");
+  DEBUG_PRINTLN("WiFi Connected!");
   wifiManager.startWebPortal();
 }
 
 
 void initializeMqttClient() {
-  Serial.print("Attempting MQTT connection to: ");
-  Serial.print(mqttSettings.hostname);
-  Serial.print(":");
-  Serial.println(mqttSettings.port);
+  DEBUG_PRINT("Attempting MQTT connection to: ");
+  DEBUG_PRINT(mqttSettings.hostname);
+  DEBUG_PRINT(":");
+  DEBUG_PRINTLN(mqttSettings.port);
   MQTTClient.setServer(mqttSettings.hostname, atoi(mqttSettings.port));
 }
 
@@ -208,15 +205,15 @@ uint8_t MQTTReconnect() {
     return 1;
   }
 
-  Serial.print("With Client ID: ");
-  Serial.print(mqttSettings.clientId);
-  Serial.print(", Username: ");
-  Serial.print(mqttSettings.user);
-  Serial.print(" and Password: ");
-  Serial.println(mqttSettings.password);
+  DEBUG_PRINT("With Client ID: ");
+  DEBUG_PRINT(mqttSettings.clientId);
+  DEBUG_PRINT(", Username: ");
+  DEBUG_PRINT(mqttSettings.user);
+  DEBUG_PRINT(" and Password: ");
+  DEBUG_PRINTLN(mqttSettings.password);
 
   if (MQTTClient.connect(mqttSettings.clientId, mqttSettings.user, mqttSettings.password, MQTT_LWT, 0, true, "offline")) {
-    Serial.println("MQTT Server Connected");
+    DEBUG_PRINTLN("MQTT Server Connected");
     MQTTonConnect();
     digitalWrite(Red_RGB_LED, LOW);     // Turn off the Red LED
     digitalWrite(Green_RGB_LED, HIGH);  // Flash the Green LED
@@ -224,8 +221,8 @@ uint8_t MQTTReconnect() {
     digitalWrite(Green_RGB_LED, LOW);
     return 1;
   } else {
-    Serial.print("Failed with Error Code: ");
-    Serial.println(MQTTClient.state());
+    DEBUG_PRINT("Failed with Error Code: ");
+    DEBUG_PRINTLN(MQTTClient.state());
     switch (MQTTClient.state()) {
       case -4:
         DEBUG_PRINTLN("MQTT_CONNECTION_TIMEOUT");
