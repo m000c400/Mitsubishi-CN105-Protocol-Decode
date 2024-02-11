@@ -37,6 +37,15 @@ int LDR = A0;
 int Red_RGB_LED = 15;
 int Green_RGB_LED = 12;
 int Blue_RGB_LED = 13;
+bool shouldSaveConfig = false;
+
+const int clientId_max_length = 25;
+const int hostname_max_length = 200;
+const int port_max_length = 10;
+const int user_max_length = 30;
+const int password_max_length = 50;
+
+
 
 
 // The extra parameters to be configured (can be either global or just in the setup)
@@ -45,11 +54,11 @@ int Blue_RGB_LED = 13;
 // Here you can pre-set the settings for the MQTT connection. The settings can later be changed via Wifi Manager.
 struct MqttSettings {
   // These are the placeholder objects for the User
-  char clientId[20] = "EcodanBridge";
-  char hostname[40] = "IPorDNS";
-  char port[6] = "1883";
-  char user[20] = "Username";
-  char password[30] = "Password";  // 30 Char Max
+  char clientId[clientId_max_length] = "EcodanBridge";
+  char hostname[hostname_max_length] = "IPorDNS";
+  char port[port_max_length] = "1883";
+  char user[user_max_length] = "Username";
+  char password[password_max_length] = "Password";
   // These are the Index Values for the JSON
   char wm_mqtt_client_id_identifier[20] = "mqtt_client_id";
   char wm_mqtt_hostname_identifier[40] = "mqtt_hostname";
@@ -69,11 +78,11 @@ WiFiManager wifiManager;
 
 
 // Delcare Global Scope for Non-Blocking, always active Portal with "TEMP" placeholder, real values populated later from filesystem
-WiFiManagerParameter custom_mqtt_client_id("client_id", "MQTT Client ID", "TEMP", 20);
-WiFiManagerParameter custom_mqtt_server("server", "MQTT Server", "TEMP", 40);
-WiFiManagerParameter custom_mqtt_port("port", "MQTT Server Port", "TEMP", 6);
-WiFiManagerParameter custom_mqtt_user("user", "MQTT Username", "TEMP", 20);
-WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", "TEMP", 30);
+WiFiManagerParameter custom_mqtt_client_id("client_id", "MQTT Client ID", "TEMP", clientId_max_length);
+WiFiManagerParameter custom_mqtt_server("server", "MQTT Server", "TEMP", hostname_max_length);
+WiFiManagerParameter custom_mqtt_port("port", "MQTT Server Port", "TEMP", port_max_length);
+WiFiManagerParameter custom_mqtt_user("user", "MQTT Username", "TEMP", user_max_length);
+WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", "TEMP", password_max_length);
 
 
 #include "config.h"
@@ -106,9 +115,8 @@ int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 
 void setup() {
   WiFi.mode(WIFI_STA);  // explicitly set mode, esp defaults to STA+AP
-  // put your setup code here, to run once:
   //Serial.begin(115200);
-  DEBUGPORT.begin(DEBUGBAUD);
+  DEBUGPORT.begin(DEBUGBAUD);      // Start Debug
   HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, RxPin, TxPin);  // Rx, Tx
   //pinMode(RxPin, INPUT_PULLUP);  // Commented out for testing because we get nothing :(
   pinMode(Activity_LED, OUTPUT);   // Onboard LED
@@ -135,7 +143,6 @@ void setup() {
 
   initializeMqttClient();
   MQTTClient.setCallback(MQTTonData);
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.startWebPortal();
 }
 

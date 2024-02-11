@@ -48,8 +48,6 @@ String MQTTCommandSystemHeatingMode = MQTT_COMMAND_SYSTEM_HEATINGMODE;
 String MQTTCommandSystemPower = MQTT_COMMAND_SYSTEM_POWER;
 String MQTTCommandSystemTemp = MQTT_COMMAND_SYSTEM_TEMP;
 
-// save config to file
-bool shouldSaveConfig = false;
 String HostName;
 
 
@@ -73,13 +71,36 @@ void readSettingsFromConfig() {
           DEBUG_PRINT("Failed to read file: ");
           DEBUG_PRINTLN(error.c_str());
         } else {
-          DEBUG_PRINTLN("Parsed JSON");
+          DEBUG_PRINTLN("Parsed JSON: ");
+          serializeJson(doc, Serial);
+          DEBUG_PRINTLN();
 
-          strcpy(mqttSettings.clientId, doc[mqttSettings.wm_mqtt_client_id_identifier]);
-          strcpy(mqttSettings.hostname, doc[mqttSettings.wm_mqtt_hostname_identifier]);
-          strcpy(mqttSettings.port, doc[mqttSettings.wm_mqtt_port_identifier]);
-          strcpy(mqttSettings.user, doc[mqttSettings.wm_mqtt_user_identifier]);
-          strcpy(mqttSettings.password, doc[mqttSettings.wm_mqtt_password_identifier]);
+          // Build in safety check, otherwise ESP will crash out and you can't get back in
+          if (doc.containsKey(mqttSettings.wm_mqtt_client_id_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_client_id_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_client_id_identifier]) + 1) <= clientId_max_length)) {
+              strcpy(mqttSettings.clientId, doc[mqttSettings.wm_mqtt_client_id_identifier]);
+            }
+          }
+          if (doc.containsKey(mqttSettings.wm_mqtt_hostname_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_hostname_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_hostname_identifier]) + 1) <= hostname_max_length)) {
+              strcpy(mqttSettings.hostname, doc[mqttSettings.wm_mqtt_hostname_identifier]);
+            }
+          }
+          if (doc.containsKey(mqttSettings.wm_mqtt_port_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_port_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_port_identifier]) + 1) <= port_max_length)) {
+              strcpy(mqttSettings.port, doc[mqttSettings.wm_mqtt_port_identifier]);
+            }
+          }
+          if (doc.containsKey(mqttSettings.wm_mqtt_user_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_user_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_user_identifier]) + 1) <= user_max_length)) {
+              strcpy(mqttSettings.user, doc[mqttSettings.wm_mqtt_user_identifier]);
+            }
+          }
+          if (doc.containsKey(mqttSettings.wm_mqtt_password_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_password_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_password_identifier]) + 1) <= password_max_length)) {
+              strcpy(mqttSettings.password, doc[mqttSettings.wm_mqtt_password_identifier]);
+            }
+          }
         }
       }
       configFile.close();
@@ -92,7 +113,6 @@ void readSettingsFromConfig() {
 }
 
 void saveConfig() {
-
   // Read MQTT Portal Values for save to file system
   DEBUG_PRINTLN("Copying Portal Values...");
   strcpy(mqttSettings.clientId, custom_mqtt_client_id.getValue());
@@ -131,16 +151,16 @@ void saveConfigCallback() {
 }
 
 void initializeWifiManager() {
-
+  DEBUG_PRINTLN("Starting WiFi Manager");
   // Reset Wifi settings for testing
   //wifiManager.resetSettings();
 
   // Set or Update the values
-  custom_mqtt_client_id.setValue(mqttSettings.clientId, 20);
-  custom_mqtt_server.setValue(mqttSettings.hostname, 40);
-  custom_mqtt_port.setValue(mqttSettings.port, 6);
-  custom_mqtt_user.setValue(mqttSettings.user, 20);
-  custom_mqtt_pass.setValue(mqttSettings.password, 30);
+  custom_mqtt_client_id.setValue(mqttSettings.clientId, clientId_max_length);
+  custom_mqtt_server.setValue(mqttSettings.hostname, hostname_max_length);
+  custom_mqtt_port.setValue(mqttSettings.port, port_max_length);
+  custom_mqtt_user.setValue(mqttSettings.user, user_max_length);
+  custom_mqtt_pass.setValue(mqttSettings.password, password_max_length);
 
   // Add the custom MQTT parameters here
   wifiManager.addParameter(&custom_mqtt_client_id);
@@ -157,8 +177,8 @@ void initializeWifiManager() {
   HostName += String(ESP.getChipId(), HEX);
   WiFi.hostname(HostName);
 
-  wifiManager.setConfigPortalTimeout(120);  // Timeout before launching the config portal
-  wifiManager.setBreakAfterConfig(true);    // Saves MQTT, even if WiFi Fails
+  wifiManager.setConfigPortalTimeout(120);                // Timeout before launching the config portal
+  wifiManager.setBreakAfterConfig(true);                  // Saves settings, even if WiFi Fails
   wifiManager.setSaveConfigCallback(saveConfigCallback);  // Set config save notify callback
 
   if (!wifiManager.autoConnect("Ecodan Bridge AP")) {
@@ -263,7 +283,7 @@ uint8_t MQTTReconnect() {
 
 void handleMqttState() {
   if (!MQTTClient.connected()) {
-    analogWrite(Green_RGB_LED, 30);  // Green LED on, 25% brightness
+    analogWrite(Green_RGB_LED, 30);   // Green LED on, 25% brightness
     digitalWrite(Red_RGB_LED, HIGH);  // Add the Red LED to the Green LED = Orange
     MQTTReconnect();
   }
