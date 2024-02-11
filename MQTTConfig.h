@@ -52,52 +52,30 @@ String MQTTCommandSystemTemp = MQTT_COMMAND_SYSTEM_TEMP;
 bool shouldSaveConfig = false;
 String HostName;
 
-// Here you can pre-set the settings for the MQTT connection. The settings can later be changed via Wifi Manager.
-struct MqttSettings {
-  char clientId[20] = "EcodanBridge";
-  char hostname[40] = "IPorDNS";
-  char port[6] = "1883";
-  char user[20] = "Username";
-  char password[30] = "Password";              // 30 Char Max
-  char wm_mqtt_client_id_identifier[15] = "mqtt_client_id";
-  char wm_mqtt_hostname_identifier[14] = "mqtt_hostname";
-  char wm_mqtt_port_identifier[10] = "mqtt_port";
-  char wm_mqtt_user_identifier[10] = "mqtt_user";
-  char wm_mqtt_password_identifier[14] = "mqtt_password";
-};
-
-MqttSettings mqttSettings;
-
-
 
 void readSettingsFromConfig() {
-  //clean FS for testing
-  //SPIFFS.format();
+  // Clean LittleFS for testing
+  //LittleFS.format();
 
-  //read configuration from FS json
-  Serial.println("mounting FS...");
-
-  if (SPIFFS.begin()) {
-    Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
+  // Read configuration from LittleFS JSON
+  Serial.println("Mounting File System...");
+  if (LittleFS.begin()) {
+    Serial.println("Mounted File System");
+    if (LittleFS.exists("/config.json")) {
       //file exists, reading and loading
-      Serial.println("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
+      Serial.println("Reading config file");
+      File configFile = LittleFS.open("/config.json", "r");
       if (configFile) {
-        Serial.println("opened config file");
-        Serial.print(configFile);
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
+        Serial.println("Opened config file");
+        //StaticJsonDocument<1024> doc;
+        JsonDocument doc;
 
-        configFile.readBytes(buf.get(), size);
-        // Use arduinojson.org/v6/assistant to compute the capacity.
-        StaticJsonDocument<1024> doc;
         DeserializationError error = deserializeJson(doc, configFile);
         if (error) {
-          Serial.println(F("Failed to read file, using default configuration"));
+          Serial.print("Failed to read file: ");
+          Serial.println(error.c_str());
         } else {
-          Serial.println("\nparsed json");
+          Serial.println("Parsed JSON");
 
           strcpy(mqttSettings.clientId, doc[mqttSettings.wm_mqtt_client_id_identifier]);
           strcpy(mqttSettings.hostname, doc[mqttSettings.wm_mqtt_hostname_identifier]);
@@ -106,38 +84,68 @@ void readSettingsFromConfig() {
           strcpy(mqttSettings.password, doc[mqttSettings.wm_mqtt_password_identifier]);
         }
       }
+      configFile.close();
+    } else {
+      Serial.println("No config file exists, use placeholder values");
     }
   } else {
-    Serial.println("failed to mount FS");
+    Serial.println("Failed to mount File System");
   }
+}
+
+void saveConfig() {
+
+  // Read MQTT Portal Values for save to file system
+  Serial.println("Copying Portal Values...");
+  strcpy(mqttSettings.clientId, custom_mqtt_client_id.getValue());
+  strcpy(mqttSettings.hostname, custom_mqtt_server.getValue());
+  strcpy(mqttSettings.port, custom_mqtt_port.getValue());
+  strcpy(mqttSettings.user, custom_mqtt_user.getValue());
+  strcpy(mqttSettings.password, custom_mqtt_pass.getValue());
+
+  Serial.print("Saving config... ");
+  File configFile = LittleFS.open("/config.json", "w");
+  if (!configFile) {
+    Serial.println("[FAILED] Unable to open config file for writing");
+  } else {
+    JsonDocument doc;
+    //StaticJsonDocument<1024> doc;
+    doc[mqttSettings.wm_mqtt_client_id_identifier] = mqttSettings.clientId;
+    doc[mqttSettings.wm_mqtt_hostname_identifier] = mqttSettings.hostname;
+    doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
+    doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
+    doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
+
+    if (serializeJson(doc, configFile) == 0) {
+      Serial.println("[FAILED]");
+    } else {
+      Serial.println("[DONE]");
+      serializeJson(doc, Serial);
+      Serial.println();
+    }
+  }
+  configFile.close();
+  shouldSaveConfig = false;
 }
 
 //callback notifying us of the need to save config
 void saveConfigCallback() {
-  Serial.println("Should save config");
-  shouldSaveConfig = true;
+  saveConfig();
 }
 
 void initializeWifiManager() {
-  // The extra parameters to be configured (can be either global or just in the setup)
-  // After connecting, parameter.getValue() will get you the configured value
-  // id/name placeholder/prompt default length
-  WiFiManagerParameter custom_mqtt_client_id("client_id", "MQTT Client ID", mqttSettings.clientId, 40);
-  WiFiManagerParameter custom_mqtt_server("server", "MQTT Server", mqttSettings.hostname, 40);
-  WiFiManagerParameter custom_mqtt_port("port", "MQTT Server Port", mqttSettings.port, 6);
-  WiFiManagerParameter custom_mqtt_user("user", "MQTT Username", mqttSettings.user, 20);
-  WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", mqttSettings.password, 30);
-
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
 
   // Reset Wifi settings for testing
   //wifiManager.resetSettings();
 
-  //set config save notify callback
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  // Set or Update the values
+  custom_mqtt_client_id.setValue(mqttSettings.clientId, 20);
+  custom_mqtt_server.setValue(mqttSettings.hostname, 40);
+  custom_mqtt_port.setValue(mqttSettings.port, 6);
+  custom_mqtt_user.setValue(mqttSettings.user, 20);
+  custom_mqtt_pass.setValue(mqttSettings.password, 30);
 
-  //add all your parameters here
+  // Add the custom MQTT parameters here
   wifiManager.addParameter(&custom_mqtt_client_id);
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
@@ -148,53 +156,30 @@ void initializeWifiManager() {
   //defaults to 8%
   //wifiManager.setMinimumSignalQuality();
 
-
   HostName = "EcodanBridge-";
   HostName += String(ESP.getChipId(), HEX);
   WiFi.hostname(HostName);
 
   wifiManager.setConfigPortalTimeout(120);  // Timeout before launching the config portal
-  //wifiManager.setConnectTimeout(30);       // Retry
-  //if (wifiManager.getWiFiIsSaved()) { wifiManager.setEnableConfigPortal(false); }
+  wifiManager.setBreakAfterConfig(true);    // Saves MQTT, even if WiFi Fails
+  wifiManager.setSaveConfigCallback(saveConfigCallback);  // Set config save notify callback
+
   if (!wifiManager.autoConnect("Ecodan Bridge AP")) {
-    Serial.println("failed to connect and hit timeout");
+    Serial.println("Failed to connect and hit timeout");
     delay(3000);
     ESP.reset();
-    delay(5000);
   }
 
-  //if you get here you have connected to the WiFi
-  Serial.println("Connected...yay! :)");
-
-
-  //read updated parameters
-  strcpy(mqttSettings.clientId, custom_mqtt_client_id.getValue());
-  strcpy(mqttSettings.hostname, custom_mqtt_server.getValue());
-  strcpy(mqttSettings.port, custom_mqtt_port.getValue());
-  strcpy(mqttSettings.user, custom_mqtt_user.getValue());
-  strcpy(mqttSettings.password, custom_mqtt_pass.getValue());
+  Serial.println("WiFi Connected!");
+  wifiManager.startWebPortal();
 }
 
-void saveConfig() {
-  Serial.println("saving config");
-  StaticJsonDocument<1024> doc;
-  doc[mqttSettings.wm_mqtt_client_id_identifier] = mqttSettings.clientId;
-  doc[mqttSettings.wm_mqtt_hostname_identifier] = mqttSettings.hostname;
-  doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
-  doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
-  doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
-
-  File configFile = SPIFFS.open("/config.json", "w");
-  if (!configFile) {
-    Serial.println("failed to open config file for writing");
-  }
-
-  configFile.close();
-}
 
 void initializeMqttClient() {
-  Serial.println("local ip");
-  Serial.println(WiFi.localIP());
+  Serial.print("Attempting MQTT connection to: ");
+  Serial.print(mqttSettings.hostname);
+  Serial.print(":");
+  Serial.println(mqttSettings.port);
   MQTTClient.setServer(mqttSettings.hostname, atoi(mqttSettings.port));
 }
 
@@ -223,17 +208,24 @@ uint8_t MQTTReconnect() {
     return 1;
   }
 
-  DEBUG_PRINTLN("Attempting MQTT connection...");
-  if (MQTTClient.connect(HostName.c_str(), mqttSettings.user, mqttSettings.password, MQTT_LWT, 0, true, "offline")) {
-    DEBUG_PRINTLN("MQTT Connected");
+  Serial.print("With Client ID: ");
+  Serial.print(mqttSettings.clientId);
+  Serial.print(", Username: ");
+  Serial.print(mqttSettings.user);
+  Serial.print(" and Password: ");
+  Serial.println(mqttSettings.password);
+
+  if (MQTTClient.connect(mqttSettings.clientId, mqttSettings.user, mqttSettings.password, MQTT_LWT, 0, true, "offline")) {
+    Serial.println("MQTT Server Connected");
     MQTTonConnect();
-    DEBUG_PRINTLN("Connected to MQTT");
     digitalWrite(Red_RGB_LED, LOW);     // Turn off the Red LED
     digitalWrite(Green_RGB_LED, HIGH);  // Flash the Green LED
     delay(10);
     digitalWrite(Green_RGB_LED, LOW);
     return 1;
   } else {
+    Serial.print("Failed with Error Code: ");
+    Serial.println(MQTTClient.state());
     switch (MQTTClient.state()) {
       case -4:
         DEBUG_PRINTLN("MQTT_CONNECTION_TIMEOUT");
@@ -274,7 +266,8 @@ uint8_t MQTTReconnect() {
 
 void handleMqttState() {
   if (!MQTTClient.connected()) {
-    digitalWrite(Red_RGB_LED, HIGH);       // Add the Red LED to the Green LED = Orange
+    analogWrite(Green_RGB_LED, 30);  // Green LED on, 25% brightness
+    digitalWrite(Red_RGB_LED, HIGH);  // Add the Red LED to the Green LED = Orange
     MQTTReconnect();
   }
   MQTTClient.loop();

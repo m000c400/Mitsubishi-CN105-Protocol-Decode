@@ -15,9 +15,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-
-#include <FS.h>           //this needs to be first
+#include <FS.h>  // This needs to be first
+#include <LittleFS.h>
 #include <ESP8266WiFi.h>  // needed for EPS8266
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
@@ -29,6 +28,7 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
+
 int RxPin = 14;  //Rx
 int TxPin = 16;  //Tx
 int Activity_LED = 2;
@@ -38,6 +38,28 @@ int Red_RGB_LED = 15;
 int Green_RGB_LED = 12;
 int Blue_RGB_LED = 13;
 
+
+// The extra parameters to be configured (can be either global or just in the setup)
+// After connecting, parameter.getValue() will get you the configured value
+// id/name placeholder/prompt default length
+// Here you can pre-set the settings for the MQTT connection. The settings can later be changed via Wifi Manager.
+struct MqttSettings {
+  // These are the placeholder objects for the User
+  char clientId[20] = "EcodanBridge";
+  char hostname[40] = "IPorDNS";
+  char port[6] = "1883";
+  char user[20] = "Username";
+  char password[30] = "Password";  // 30 Char Max
+  // These are the Index Values for the JSON
+  char wm_mqtt_client_id_identifier[20] = "mqtt_client_id";
+  char wm_mqtt_hostname_identifier[40] = "mqtt_hostname";
+  char wm_mqtt_port_identifier[10] = "mqtt_port";
+  char wm_mqtt_user_identifier[20] = "mqtt_user";
+  char wm_mqtt_password_identifier[30] = "mqtt_password";
+};
+
+MqttSettings mqttSettings;
+
 ECODAN HeatPump;
 SoftwareSerial SwSerial;
 WiFiClient NetworkClient;
@@ -45,13 +67,20 @@ PubSubClient MQTTClient(NetworkClient);
 ESPTelnet TelnetServer;
 WiFiManager wifiManager;
 
+
+// Delcare Global Scope for Non-Blocking, always active Portal with "TEMP" placeholder, real values populated later from filesystem
+WiFiManagerParameter custom_mqtt_client_id("client_id", "MQTT Client ID", "TEMP", 20);
+WiFiManagerParameter custom_mqtt_server("server", "MQTT Server", "TEMP", 40);
+WiFiManagerParameter custom_mqtt_port("port", "MQTT Server Port", "TEMP", 6);
+WiFiManagerParameter custom_mqtt_user("user", "MQTT Username", "TEMP", 20);
+WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", "TEMP", 30);
+
+
 #include "config.h"
 #include "TimerCallBack.h"
 #include "Debug.h"
 #include "OTA.h"
 #include "MQTTConfig.h"
-
-
 
 void HeatPumpQueryStateEngine(void);
 void HeatPumpKeepAlive(void);
@@ -76,7 +105,10 @@ int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 
 
 void setup() {
-  //DEBUGPORT.begin(DEBUGBAUD);
+  WiFi.mode(WIFI_STA);  // explicitly set mode, esp defaults to STA+AP
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  DEBUGPORT.begin(DEBUGBAUD);
   HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, RxPin, TxPin);  // Rx, Tx
   //pinMode(RxPin, INPUT_PULLUP);  // Commented out for testing because we get nothing :(
   pinMode(Activity_LED, OUTPUT);   // Onboard LED
@@ -95,17 +127,16 @@ void setup() {
 
   readSettingsFromConfig();
   initializeWifiManager();
-
   if (shouldSaveConfig) {
     saveConfig();
   }
+  setupTelnet();
+  OTASetup(HostName.c_str());
 
   initializeMqttClient();
-
-  setupTelnet();
-
-  OTASetup(HostName.c_str());
   MQTTClient.setCallback(MQTTonData);
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.startWebPortal();
 }
 
 void loop() {
@@ -119,9 +150,15 @@ void loop() {
   HeatPump.Process();
   ArduinoOTA.handle();
 
+  wifiManager.process();
+  if (shouldSaveConfig) {
+    saveConfig();
+    ESP.reset();  // To start clean with new settings
+  }
+
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(Green_RGB_LED, LOW);  // Turn the Green LED Off
-    digitalWrite(Red_RGB_LED, HIGH);  // Turn the Red LED On
+    digitalWrite(Red_RGB_LED, HIGH);   // Turn the Red LED On
     if (WiFiOneShot == 1) {
       wifipreviousMillis = millis();
       WiFiOneShot = 0;
@@ -156,7 +193,6 @@ void loop() {
     ESP.reset();  // Then reset
   }
 }
-
 
 void HeatPumpKeepAlive(void) {
   HeatPump.KeepAlive();
@@ -401,6 +437,7 @@ void StatusReport(void) {
 
   serializeJson(doc, Buffer);
   MQTTClient.publish(MQTT_STATUS_WIFISTATUS, Buffer, true);
+  MQTTClient.publish(MQTT_LWT, "online");
   //DEBUG_PRINTLN(Buffer);
 }
 
