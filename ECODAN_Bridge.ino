@@ -116,7 +116,7 @@ int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 void setup() {
   WiFi.mode(WIFI_STA);  // explicitly set mode, esp defaults to STA+AP
   //Serial.begin(115200);
-  DEBUGPORT.begin(DEBUGBAUD);      // Start Debug
+  DEBUGPORT.begin(DEBUGBAUD);                                       // Start Debug
   HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, RxPin, TxPin);  // Rx, Tx
   //pinMode(RxPin, INPUT_PULLUP);  // Commented out for testing because we get nothing :(
   pinMode(Activity_LED, OUTPUT);   // Onboard LED
@@ -258,16 +258,25 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone1 Flow Setpoint");
     if (Zone2_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone2 Update is currently in progress");
-      HeatPump.SetZoneTempSetpoint(Payload.toInt(), Zone1FlowSetpoint_UpdateValue, BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      HeatPump.SetZoneFlowSetpoint(Payload.toInt(), Zone2FlowSetpoint_UpdateValue, BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
-      HeatPump.SetZoneTempSetpoint(Payload.toInt(), HeatPump.Status.Zone2FlowTemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
+      HeatPump.SetZoneFlowSetpoint(Payload.toInt(), HeatPump.Status.Zone2FlowTemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
     }
     Zone1FlowSetpoint_UpdateValue = Payload.toInt();
     Zone1_Update_in_Progress = 1;
   }
   if (Topic == MQTTCommandZone1CurveSetpoint) {
-    HeatPump.SetZoneCurveSetpoint(Payload.toInt(), Payload.toInt(), ZONE1);
+    DEBUG_PRINTLN("MQTT Set Zone2 Weather Comp Setpoint");
+    if (Zone2_Update_in_Progress == 1) {
+      DEBUG_PRINTLN("Zone2 Update is currently in progress");
+      HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, BOTH);  // Set the Payload and to BOTH Zones as both are requiring update
+    } else {
+      HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), HeatPump.Status.Zone2TemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
+    }
+    Zone1TemperatureSetpoint_UpdateValue = Payload.toFloat();
+    Zone1_Update_in_Progress = 1;
   }
+
 
 
   // Heating Zone 2 Commands
@@ -286,15 +295,23 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone2 Flow Setpoint");
     if (Zone1_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone1 Update is currently in progress");
-      HeatPump.SetZoneTempSetpoint(Zone1FlowSetpoint_UpdateValue, Payload.toInt(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      HeatPump.SetZoneFlowSetpoint(Zone1FlowSetpoint_UpdateValue, Payload.toInt(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
-      HeatPump.SetZoneTempSetpoint(HeatPump.Status.Zone1FlowTemperatureSetpoint, Payload.toInt(), ZONE2);  // Set the new value and the current value of the other zone
+      HeatPump.SetZoneFlowSetpoint(HeatPump.Status.Zone1FlowTemperatureSetpoint, Payload.toInt(), ZONE2);  // Set the new value and the current value of the other zone
     }
     Zone2FlowSetpoint_UpdateValue = Payload.toInt();
     Zone2_Update_in_Progress = 1;
   }
   if (Topic == MQTTCommandZone2CurveSetpoint) {
-    HeatPump.SetZoneCurveSetpoint(Payload.toInt(), Payload.toInt(), ZONE2);
+    DEBUG_PRINTLN("MQTT Set Zone2 Weather Comp Setpoint");
+    if (Zone1_Update_in_Progress == 1) {
+      DEBUG_PRINTLN("Zone1 Update is currently in progress");
+      HeatPump.SetZoneCurveSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+    } else {
+      HeatPump.SetZoneCurveSetpoint(HeatPump.Status.Zone1TemperatureSetpoint, Payload.toFloat(), ZONE2);  // Set the new value and the current value of the other zone
+    }
+    Zone2TemperatureSetpoint_UpdateValue = Payload.toFloat();
+    Zone2_Update_in_Progress = 1;
   }
 
 

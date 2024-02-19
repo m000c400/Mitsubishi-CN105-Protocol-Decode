@@ -188,7 +188,7 @@ void ECODAN::SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint
   uint8_t CommandSize = 0;
   
   ECODANDECODER::CreateBlankTxMessage(SET_REQUEST, 0x10);
-  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE, Zone1Target, Zone2Target, Zones, 0, HEATING_CONTROL_MODE_COMPENSATION, HEATING_CONTROL_MODE_COMPENSATION, 0, 1);
+  ECODANDECODER::EncodeSystemUpdate(SET_ZONE_SETPOINT, Zone1Target, Zone2Target, Zones, 0, HEATING_CONTROL_MODE_COMPENSATION, HEATING_CONTROL_MODE_COMPENSATION, 0, 1);
   CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
   DeviceStream->write(Buffer, CommandSize);
 }

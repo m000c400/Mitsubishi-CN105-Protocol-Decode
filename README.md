@@ -1,7 +1,6 @@
 # Mitsubishi-CN105-Protocol-Decode
 For Ecodan ASHP Units
-I have included my reference implemenataion, 
-Built for Witty ESP8266 (5V) - 4MB, 1MB FS, 1MB OTA
+I have included my reference implemenataion, but all very much work in progress
 
 https://gitter.im/Mitsubishi-CN105-Protocol-Decode/community
 
