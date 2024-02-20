@@ -44,8 +44,7 @@ const int hostname_max_length = 200;
 const int port_max_length = 10;
 const int user_max_length = 30;
 const int password_max_length = 50;
-
-
+const int basetopic_max_length = 30;
 
 
 // The extra parameters to be configured (can be either global or just in the setup)
@@ -59,12 +58,14 @@ struct MqttSettings {
   char port[port_max_length] = "1883";
   char user[user_max_length] = "Username";
   char password[password_max_length] = "Password";
+  char baseTopic[basetopic_max_length] = "Ecodan/ASHP";
   // These are the Index Values for the JSON
   char wm_mqtt_client_id_identifier[20] = "mqtt_client_id";
   char wm_mqtt_hostname_identifier[40] = "mqtt_hostname";
   char wm_mqtt_port_identifier[10] = "mqtt_port";
   char wm_mqtt_user_identifier[20] = "mqtt_user";
   char wm_mqtt_password_identifier[30] = "mqtt_password";
+  char wm_mqtt_basetopic_identifier[20] = "mqtt_basetopic";
 };
 
 MqttSettings mqttSettings;
@@ -83,6 +84,7 @@ WiFiManagerParameter custom_mqtt_server("server", "MQTT Server", "TEMP", hostnam
 WiFiManagerParameter custom_mqtt_port("port", "MQTT Server Port", "TEMP", port_max_length);
 WiFiManagerParameter custom_mqtt_user("user", "MQTT Username", "TEMP", user_max_length);
 WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", "TEMP", password_max_length);
+WiFiManagerParameter custom_mqtt_basetopic("basetopic", "MQTT Base Topic", "TEMP", basetopic_max_length);
 
 
 #include "config.h"
@@ -139,8 +141,11 @@ void setup() {
     saveConfig();
   }
   setupTelnet();
+  //startTelnet();
+  
   OTASetup(HostName.c_str());
 
+  RecalculateMQTTTopics();
   initializeMqttClient();
   MQTTClient.setCallback(MQTTonData);
   wifiManager.startWebPortal();
@@ -160,8 +165,8 @@ void loop() {
   wifiManager.process();
   if (shouldSaveConfig) {
     saveConfig();
-    ESP.reset();  // To start clean with new settings
   }
+  
 
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(Green_RGB_LED, LOW);  // Turn the Green LED Off
@@ -354,7 +359,7 @@ void Zone1Report(void) {
 
   serializeJson(doc, Buffer);
 
-  MQTTClient.publish(MQTT_STATUS_ZONE1, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_ZONE1.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -368,7 +373,7 @@ void Zone2Report(void) {
   doc["FSP"] = HeatPump.Status.Zone2FlowTemperatureSetpoint;
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_ZONE2, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_ZONE2.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -385,7 +390,7 @@ void HotWaterReport(void) {
   doc["HotWaterMaximumTempDrop"] = HeatPump.Status.HotWaterMaximumTempDrop;
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_HOTWATER, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_HOTWATER.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -406,7 +411,7 @@ void SystemReport(void) {
   doc["RunHours"] = HeatPump.Status.RunHours;
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_SYSTEM, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_SYSTEM.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -426,7 +431,7 @@ void AdvancedReport(void) {
   doc["BoilerReturn"] = HeatPump.Status.ExternalBoilerReturnTemperature;
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_ADVANCED, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_ADVANCED.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -447,7 +452,7 @@ void TestReport(void) {
   doc["Unknown11"] = HeatPump.Status.Unknown11Active;
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_TEST, Buffer, true);
+  MQTTClient.publish(MQTT_STATUS_TEST.c_str(), Buffer, true);
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -460,8 +465,8 @@ void StatusReport(void) {
   doc["IP"] = WiFi.localIP().toString();
 
   serializeJson(doc, Buffer);
-  MQTTClient.publish(MQTT_STATUS_WIFISTATUS, Buffer, true);
-  MQTTClient.publish(MQTT_LWT, "online");
+  MQTTClient.publish(MQTT_STATUS_WIFISTATUS.c_str(), Buffer, true);
+  MQTTClient.publish(MQTT_LWT.c_str(), "online");
   //DEBUG_PRINTLN(Buffer);
 }
 
@@ -471,15 +476,20 @@ void setupTelnet() {
   TelnetServer.onConnectionAttempt(onTelnetConnectionAttempt);
   TelnetServer.onReconnect(onTelnetReconnect);
   TelnetServer.onDisconnect(onTelnetDisconnect);
+}
 
-
+void startTelnet(){
   DEBUG_PRINT("Telnet: ");
   if (TelnetServer.begin()) {
-    DEBUG_PRINTLN("running");
+    DEBUG_PRINTLN("Running");
   } else {
     DEBUG_PRINTLN("error.");
-    //errorMsg("Will reboot...");
   }
+}
+
+void stopTelnet(){
+  DEBUG_PRINTLN("Stopping Telnet");
+  TelnetServer.stop();
 }
 
 void onTelnetConnect(String ip) {

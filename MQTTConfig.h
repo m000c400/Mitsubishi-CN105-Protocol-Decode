@@ -1,37 +1,35 @@
+String MQTT_BASETOPIC = "Ecodan/ASHP";
 
-#define MQTT_BASETOPIC "Ecodan/ASHP"
-#define MQTT_LWT MQTT_BASETOPIC "/LWT"
+String MQTT_LWT = MQTT_BASETOPIC + "/LWT";
+String MQTT_STATUS = MQTT_BASETOPIC + "/Status";
+String MQTT_COMMAND = MQTT_BASETOPIC + "/Command";
 
-#define MQTT_STATUS MQTT_BASETOPIC "/Status"
-#define MQTT_COMMAND MQTT_BASETOPIC "/Command"
+String MQTT_STATUS_ZONE1 = MQTT_STATUS + "/Zone1";
+String MQTT_STATUS_ZONE2 = MQTT_STATUS + "/Zone2";
+String MQTT_STATUS_HOTWATER = MQTT_STATUS + "/HotWater";
+String MQTT_STATUS_SYSTEM = MQTT_STATUS + "/System";
+String MQTT_STATUS_TEST = MQTT_STATUS + "/Test";
+String MQTT_STATUS_ADVANCED = MQTT_STATUS + "/Advanced";
+String MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
 
-#define MQTT_STATUS_ZONE1 MQTT_STATUS "/Zone1"
-#define MQTT_STATUS_ZONE2 MQTT_STATUS "/Zone2"
-#define MQTT_STATUS_HOTWATER MQTT_STATUS "/HotWater"
-#define MQTT_STATUS_SYSTEM MQTT_STATUS "/System"
-#define MQTT_STATUS_TEST MQTT_STATUS "/Test"
-#define MQTT_STATUS_ADVANCED MQTT_STATUS "/Advanced"
-#define MQTT_STATUS_WIFISTATUS MQTT_STATUS "/WiFiStatus"
+String MQTT_COMMAND_ZONE1 = MQTT_COMMAND + "/Zone1";
+String MQTT_COMMAND_ZONE2 = MQTT_COMMAND + "/Zone2";
+String MQTT_COMMAND_HOTWATER = MQTT_COMMAND + "/HotWater";
+String MQTT_COMMAND_SYSTEM = MQTT_COMMAND + "/System";
 
-#define MQTT_COMMAND_ZONE1 MQTT_COMMAND "/Zone1"
-#define MQTT_COMMAND_ZONE2 MQTT_COMMAND "/Zone2"
-#define MQTT_COMMAND_HOTWATER MQTT_COMMAND "/HotWater"
-#define MQTT_COMMAND_SYSTEM MQTT_COMMAND "/System"
+String MQTT_COMMAND_ZONE1_TEMP_SETPOINT = MQTT_COMMAND_ZONE1 + "/TempSetpoint";
+String MQTT_COMMAND_ZONE1_FLOW_SETPOINT = MQTT_COMMAND_ZONE1 + "/FlowSetpoint";
+String MQTT_COMMAND_ZONE1_CURVE_SETPOINT = MQTT_COMMAND_ZONE1 + "/CurveSetpoint";
 
-#define MQTT_COMMAND_ZONE1_TEMP_SETPOINT MQTT_COMMAND_ZONE1 "/TempSetpoint"
-#define MQTT_COMMAND_ZONE1_FLOW_SETPOINT MQTT_COMMAND_ZONE1 "/FlowSetpoint"
-#define MQTT_COMMAND_ZONE1_CURVE_SETPOINT MQTT_COMMAND_ZONE1 "/CurveSetpoint"
+String MQTT_COMMAND_ZONE2_TEMP_SETPOINT = MQTT_COMMAND_ZONE2 + "/TempSetpoint";
+String MQTT_COMMAND_ZONE2_FLOW_SETPOINT = MQTT_COMMAND_ZONE2 + "/FlowSetpoint";
+String MQTT_COMMAND_ZONE2_CURVE_SETPOINT = MQTT_COMMAND_ZONE2 + "/CurveSetpoint";
 
-#define MQTT_COMMAND_ZONE2_TEMP_SETPOINT MQTT_COMMAND_ZONE2 "/TempSetpoint"
-#define MQTT_COMMAND_ZONE2_FLOW_SETPOINT MQTT_COMMAND_ZONE2 "/FlowSetpoint"
-#define MQTT_COMMAND_ZONE2_CURVE_SETPOINT MQTT_COMMAND_ZONE2 "/CurveSetpoint"
-
-#define MQTT_COMMAND_SYSTEM_HEATINGMODE MQTT_COMMAND_SYSTEM "/HeatingMode"
-#define MQTT_COMMAND_HOTWATER_SETPOINT MQTT_COMMAND_HOTWATER "/Setpoint"
-#define MQTT_COMMAND_HOTWATER_BOOST MQTT_COMMAND_HOTWATER "/Boost"
-#define MQTT_COMMAND_SYSTEM_POWER MQTT_COMMAND_SYSTEM "/Power"
-#define MQTT_COMMAND_SYSTEM_TEMP MQTT_COMMAND_SYSTEM "/Temp"
-
+String MQTT_COMMAND_HOTWATER_SETPOINT = MQTT_COMMAND_HOTWATER + "/Setpoint";
+String MQTT_COMMAND_HOTWATER_BOOST = MQTT_COMMAND_HOTWATER + "/Boost";
+String MQTT_COMMAND_SYSTEM_HEATINGMODE = MQTT_COMMAND_SYSTEM + "/HeatingMode";
+String MQTT_COMMAND_SYSTEM_POWER = MQTT_COMMAND_SYSTEM + "/Power";
+String MQTT_COMMAND_SYSTEM_TEMP = MQTT_COMMAND_SYSTEM + "/Temp";
 
 String MQTTCommandZone1TempSetpoint = MQTT_COMMAND_ZONE1_TEMP_SETPOINT;
 String MQTTCommandZone1FlowSetpoint = MQTT_COMMAND_ZONE1_FLOW_SETPOINT;
@@ -101,6 +99,12 @@ void readSettingsFromConfig() {
               strcpy(mqttSettings.password, doc[mqttSettings.wm_mqtt_password_identifier]);
             }
           }
+          if (doc.containsKey(mqttSettings.wm_mqtt_basetopic_identifier)) {
+            if ((sizeof(doc[mqttSettings.wm_mqtt_basetopic_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_basetopic_identifier]) + 1) <= basetopic_max_length)) {
+              strcpy(mqttSettings.baseTopic, doc[mqttSettings.wm_mqtt_basetopic_identifier]);
+              MQTT_BASETOPIC = mqttSettings.baseTopic;
+            }
+          }
         }
       }
       configFile.close();
@@ -112,6 +116,43 @@ void readSettingsFromConfig() {
   }
 }
 
+
+
+void RecalculateMQTTTopics() {
+  // The base topic may change via WiFi Manager
+  MQTT_LWT = MQTT_BASETOPIC + "/LWT";
+  MQTT_STATUS = MQTT_BASETOPIC + "/Status";
+  MQTT_COMMAND = MQTT_BASETOPIC + "/Command";
+
+  MQTT_STATUS_ZONE1 = MQTT_STATUS + "/Zone1";
+  MQTT_STATUS_ZONE2 = MQTT_STATUS + "/Zone2";
+  MQTT_STATUS_HOTWATER = MQTT_STATUS + "/HotWater";
+  MQTT_STATUS_SYSTEM = MQTT_STATUS + "/System";
+  MQTT_STATUS_TEST = MQTT_STATUS + "/Test";
+  MQTT_STATUS_ADVANCED = MQTT_STATUS + "/Advanced";
+  MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
+
+  MQTT_COMMAND_ZONE1 = MQTT_COMMAND + "/Zone1";
+  MQTT_COMMAND_ZONE2 = MQTT_COMMAND + "/Zone2";
+  MQTT_COMMAND_HOTWATER = MQTT_COMMAND + "/HotWater";
+  MQTT_COMMAND_SYSTEM = MQTT_COMMAND + "/System";
+
+  MQTT_COMMAND_ZONE1_TEMP_SETPOINT = MQTT_COMMAND_ZONE1 + "/TempSetpoint";
+  MQTT_COMMAND_ZONE1_FLOW_SETPOINT = MQTT_COMMAND_ZONE1 + "/FlowSetpoint";
+  MQTT_COMMAND_ZONE1_CURVE_SETPOINT = MQTT_COMMAND_ZONE1 + "/CurveSetpoint";
+
+  MQTT_COMMAND_ZONE2_TEMP_SETPOINT = MQTT_COMMAND_ZONE2 + "/TempSetpoint";
+  MQTT_COMMAND_ZONE2_FLOW_SETPOINT = MQTT_COMMAND_ZONE2 + "/FlowSetpoint";
+  MQTT_COMMAND_ZONE2_CURVE_SETPOINT = MQTT_COMMAND_ZONE2 + "/CurveSetpoint";
+
+  MQTT_COMMAND_HOTWATER_SETPOINT = MQTT_COMMAND_HOTWATER + "/Setpoint";
+  MQTT_COMMAND_HOTWATER_BOOST = MQTT_COMMAND_HOTWATER + "/Boost";
+  MQTT_COMMAND_SYSTEM_HEATINGMODE = MQTT_COMMAND_SYSTEM + "/HeatingMode";
+  MQTT_COMMAND_SYSTEM_POWER = MQTT_COMMAND_SYSTEM + "/Power";
+  MQTT_COMMAND_SYSTEM_TEMP = MQTT_COMMAND_SYSTEM + "/Temp";
+}
+
+
 void saveConfig() {
   // Read MQTT Portal Values for save to file system
   DEBUG_PRINTLN("Copying Portal Values...");
@@ -120,6 +161,7 @@ void saveConfig() {
   strcpy(mqttSettings.port, custom_mqtt_port.getValue());
   strcpy(mqttSettings.user, custom_mqtt_user.getValue());
   strcpy(mqttSettings.password, custom_mqtt_pass.getValue());
+  strcpy(mqttSettings.baseTopic, custom_mqtt_basetopic.getValue());
 
   DEBUG_PRINT("Saving config... ");
   File configFile = LittleFS.open("/config.json", "w");
@@ -132,6 +174,7 @@ void saveConfig() {
     doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
     doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
     doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
+    doc[mqttSettings.wm_mqtt_basetopic_identifier] = mqttSettings.baseTopic;
 
     if (serializeJson(doc, configFile) == 0) {
       DEBUG_PRINTLN("[FAILED]");
@@ -161,6 +204,7 @@ void initializeWifiManager() {
   custom_mqtt_port.setValue(mqttSettings.port, port_max_length);
   custom_mqtt_user.setValue(mqttSettings.user, user_max_length);
   custom_mqtt_pass.setValue(mqttSettings.password, password_max_length);
+  custom_mqtt_basetopic.setValue(mqttSettings.baseTopic, basetopic_max_length);
 
   // Add the custom MQTT parameters here
   wifiManager.addParameter(&custom_mqtt_client_id);
@@ -168,6 +212,7 @@ void initializeWifiManager() {
   wifiManager.addParameter(&custom_mqtt_port);
   wifiManager.addParameter(&custom_mqtt_user);
   wifiManager.addParameter(&custom_mqtt_pass);
+  wifiManager.addParameter(&custom_mqtt_basetopic);
 
   //set minimum quality of signal so it ignores AP's under that quality
   //defaults to 8%
@@ -203,7 +248,7 @@ void initializeMqttClient() {
 
 void MQTTonConnect(void) {
   DEBUG_PRINTLN("MQTT ON CONNECT");
-  MQTTClient.publish(MQTT_LWT, "online");
+  MQTTClient.publish(MQTT_LWT.c_str(), "online");
   delay(10);
 
   MQTTClient.subscribe(MQTTCommandZone1TempSetpoint.c_str());
@@ -232,7 +277,7 @@ uint8_t MQTTReconnect() {
   DEBUG_PRINT(" and Password: ");
   DEBUG_PRINTLN(mqttSettings.password);
 
-  if (MQTTClient.connect(mqttSettings.clientId, mqttSettings.user, mqttSettings.password, MQTT_LWT, 0, true, "offline")) {
+  if (MQTTClient.connect(mqttSettings.clientId, mqttSettings.user, mqttSettings.password, MQTT_LWT.c_str(), 0, true, "offline")) {
     DEBUG_PRINTLN("MQTT Server Connected");
     MQTTonConnect();
     digitalWrite(Red_RGB_LED, LOW);     // Turn off the Red LED
