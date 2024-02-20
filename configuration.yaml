@@ -116,7 +116,7 @@ mqtt:
       current_temperature_template: "{{ value_json.Temperature }}"
       temperature_command_topic: "Ecodan/ASHP/Command/Zone1/TempSetpoint"
       temperature_unit: C
-      max_temp: 22
+      max_temp: 30
       min_temp: 10
       temp_step: 1
       precision: 0.5
@@ -140,7 +140,7 @@ mqtt:
       current_temperature_template: "{{ value_json.Temperature }}"
       temperature_command_topic: "Ecodan/ASHP/Command/Zone2/TempSetpoint"
       temperature_unit: C
-      max_temp: 22
+      max_temp: 30
       min_temp: 10
       temp_step: 1
       precision: 0.5
