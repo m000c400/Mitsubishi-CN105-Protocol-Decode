@@ -28,6 +28,8 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
+String FirmwareVersion = "v3.1";
+
 
 int RxPin = 14;  //Rx
 int TxPin = 16;  //Tx
@@ -470,6 +472,7 @@ void StatusReport(void) {
   doc["SSID"] = WiFi.SSID();
   doc["RSSI"] = WiFi.RSSI();
   doc["IP"] = WiFi.localIP().toString();
+  doc["Firmware"] = FirmwareVersion;
 
   serializeJson(doc, Buffer);
   MQTTClient.publish(MQTT_STATUS_WIFISTATUS.c_str(), Buffer, true);
