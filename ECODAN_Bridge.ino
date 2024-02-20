@@ -110,6 +110,7 @@ unsigned long wifipreviousMillis = 0;  // variable for comparing millis counter
 int WiFiOneShot = 1;
 int Zone1_Update_in_Progress = 0;
 int Zone2_Update_in_Progress = 0;
+int DHW_Update_in_Progress = 0;
 float Zone1TemperatureSetpoint_UpdateValue, Zone2TemperatureSetpoint_UpdateValue;
 int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 
@@ -141,8 +142,8 @@ void setup() {
     saveConfig();
   }
   setupTelnet();
-  //startTelnet();
-  
+  startTelnet();
+
   OTASetup(HostName.c_str());
 
   RecalculateMQTTTopics();
@@ -150,6 +151,7 @@ void setup() {
   MQTTClient.setCallback(MQTTonData);
   wifiManager.startWebPortal();
 }
+
 
 void loop() {
 
@@ -166,7 +168,7 @@ void loop() {
   if (shouldSaveConfig) {
     saveConfig();
   }
-  
+
 
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(Green_RGB_LED, LOW);  // Turn the Green LED Off
@@ -223,7 +225,11 @@ void HeatPumpQueryStateEngine(void) {
     if (MQTTReconnect()) {
       Zone1Report();
       Zone2Report();
-      HotWaterReport();
+      if (DHW_Update_in_Progress == 0) {  // Added because the FTC took time to enable DHW, so don't publish DHW Report after an update
+        HotWaterReport();
+      } else {
+        DHW_Update_in_Progress = 0;       // Mark the DHW update not in progress so next cycle it will be published as normal
+      }
       SystemReport();
       AdvancedReport();
       TestReport();
@@ -323,6 +329,7 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   // Other Commands
   if (Topic == MQTTCommandHotwaterBoost) {
     DEBUG_PRINTLN("MQTT Set HW Boost");
+    DHW_Update_in_Progress = 1;
     HeatPump.ForceDHW(Payload.toInt());
   }
 
@@ -478,7 +485,7 @@ void setupTelnet() {
   TelnetServer.onDisconnect(onTelnetDisconnect);
 }
 
-void startTelnet(){
+void startTelnet() {
   DEBUG_PRINT("Telnet: ");
   if (TelnetServer.begin()) {
     DEBUG_PRINTLN("Running");
@@ -487,7 +494,7 @@ void startTelnet(){
   }
 }
 
-void stopTelnet(){
+void stopTelnet() {
   DEBUG_PRINTLN("Stopping Telnet");
   TelnetServer.stop();
 }
