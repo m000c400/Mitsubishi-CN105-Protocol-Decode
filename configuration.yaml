@@ -19,6 +19,7 @@ mqtt:
     - name: "Outside Temperature"
       state_topic: "Ecodan/ASHP/Status/System"
       unit_of_measurement: "°C"
+      icon: "mdi:thermometer"
       value_template: "{{ value_json.OutsideTemp }}"
     - name: "Heat Pump Power"
       state_topic: "Ecodan/ASHP/Status/System"
@@ -27,14 +28,17 @@ mqtt:
     - name: "Hot Water Temperature"
       state_topic: "Ecodan/ASHP/Status/HotWater"
       unit_of_measurement: "°C"
+      icon: "mdi:water-thermometer"
       value_template: "{{ value_json.Temperature }}"
     - name: "Upstairs Temperature"
       state_topic: "Ecodan/ASHP/Status/Zone1"
       unit_of_measurement: "°C"
+      icon: "mdi:home-thermometer"
       value_template: "{{ value_json.Temperature }}"
     - name: "Downstairs Temperature"
       state_topic: "Ecodan/ASHP/Status/Zone2"
       unit_of_measurement: "°C"
+      icon: "mdi:home-thermometer"
       value_template: "{{ value_json.Temperature }}"
     - name: "Upstairs Setpoint"
       state_topic: "Ecodan/ASHP/Status/Zone1"
@@ -177,6 +181,33 @@ mqtt:
 template:
   sensor:
     - name: "DHW CoP"
-      state: "{{(states('sensor.delivered_dhw')|float/states('sensor.consumed_dhw')|float)|round(2)}}"
+      state: "{{(states('sensor.delivered_hot_water')|float/states('sensor.consumed_hot_water')|float)|round(2)}}"
     - name: "Heat CoP"
       state: "{{(states('sensor.delivered_heat')|float/states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "ASHP Consumed Energy"
+      unit_of_measurement: "kWh"
+      icon: "mdi:meter-electric-outline"
+      state: "{{(states('sensor.consumed_hot_water')|float + states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "Total CoP"
+      icon: "mdi:generator-stationary"
+      state: "{% if not states('sensor.heat_cop') == 'unavailable' %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{ (states('sensor.dhw_cop')|float+states('sensor.heat_cop')|float)/2 | float | round(2) }}
+                {% else %}
+                  {{ states('sensor.heat_cop')|float|round(2) }}
+                {% endif %}
+              {% else %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{states('sensor.dhw_cop')|float|round(2) }}
+                {% else %}
+                  {% set total_cop = 0|float|round(2) %}
+                {% endif %}
+              {% endif %}"
+    - name: "ASHP Efficiency"
+      icon: "mdi:generator-stationary"
+      state: "{% if 0 < states('sensor.total_cop')|float < 2 %}Poor
+              {% elif 2 < states('sensor.total_cop')|float < 3 %}Average
+              {% elif 3 < states('sensor.total_cop')|float < 4 %}Good
+              {% elif states('sensor.total_cop')|float > 4 %}Excellent
+              {% else %}Not Available
+              {% endif %}"
