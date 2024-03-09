@@ -28,7 +28,7 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "v3.1";
+String FirmwareVersion = "v3.2";
 
 
 int RxPin = 14;  //Rx
@@ -230,7 +230,7 @@ void HeatPumpQueryStateEngine(void) {
       if (DHW_Update_in_Progress == 0) {  // Added because the FTC took time to enable DHW, so don't publish DHW Report after an update
         HotWaterReport();
       } else {
-        DHW_Update_in_Progress = 0;       // Mark the DHW update not in progress so next cycle it will be published as normal
+        DHW_Update_in_Progress = 0;  // Mark the DHW update not in progress so next cycle it will be published as normal
       }
       SystemReport();
       AdvancedReport();
@@ -416,6 +416,7 @@ void SystemReport(void) {
   doc["Compressor"] = HeatPump.Status.CompressorFrequency;
   doc["SystemPower"] = SystemPowerModeString[HeatPump.Status.SystemPowerMode];
   doc["SystemOperationMode"] = SystemOperationModeString[HeatPump.Status.SystemOperationMode];
+  doc["HolidayMode"] = HeatPump.Status.HolidayModeActive;
   doc["FlowRate"] = HeatPump.Status.PrimaryFlowRate;
   doc["RunHours"] = HeatPump.Status.RunHours;
 

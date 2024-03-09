@@ -22,39 +22,38 @@
 #include <Arduino.h>
 #include "EcodanDecoder.h"
 
-class ECODAN : public ECODANDECODER
-{
-  public:
-    ECODAN(void);
-    void Process(void);
-    void SetStream(Stream *HeatPumpStream);
-    void TriggerStatusStateMachine(void);
-    void StatusStateMachine(void);
-    void KeepAlive(void); 
-    uint8_t UpdateComplete(void);
-    
-    void SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
-    void SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
-    void SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
-    void ForceDHW(uint8_t OnOff);
-    
-    void SetHotWaterSetpoint(uint8_t Target);
-    
-    void SetHeatingControlMode(String *Mode, uint8_t Zones);
-    void SetSystemPowerMode(String *Mode);
-    
-    void Scratch(uint8_t Target);
-  protected:
+class ECODAN : public ECODANDECODER {
+public:
+  ECODAN(void);
+  void Process(void);
+  void SetStream(Stream *HeatPumpStream);
+  void TriggerStatusStateMachine(void);
+  void StatusStateMachine(void);
+  void KeepAlive(void);
+  uint8_t UpdateComplete(void);
 
-  private:
-    uint8_t CurrentMessage;
+  void SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
+  void SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
+  void SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
+  void ForceDHW(uint8_t OnOff);
 
-    uint8_t UpdateFlag;
-    uint8_t Connected;
-    MessageStruct TXMessage;
-    Stream *DeviceStream;
-    void Connect(void);
-    void PrintTumble(void);
+  void SetHotWaterSetpoint(uint8_t Target);
+
+  void SetHeatingControlMode(String *Mode, uint8_t Zones);
+  void SetSystemPowerMode(String *Mode);
+
+  void Scratch(uint8_t Target);
+protected:
+
+private:
+  uint8_t CurrentMessage;
+
+  uint8_t UpdateFlag;
+  uint8_t Connected;
+  MessageStruct TXMessage;
+  Stream *DeviceStream;
+  void Connect(void);
+  void PrintTumble(void);
 };
 
 #endif
