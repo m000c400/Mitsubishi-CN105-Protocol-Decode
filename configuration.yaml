@@ -197,10 +197,6 @@ template:
       unit_of_measurement: "kWh"
       icon: "mdi:meter-electric-outline"
       state: "{{(states('sensor.consumed_hot_water')|float + states('sensor.consumed_heat')|float)|round(2)}}"
-    - name: "Percentage Total"
-      unit_of_measurement: "%"
-      icon: "mdi:percent"
-      state: "{{((states('sensor.ashp_consumed_energy')|float / states('sensor.estimated_yesterday_usage')|float)*100)|round(0)}}"
     - name: "Total CoP"
       state: "{% if not states('sensor.heat_cop') == 'unavailable' %}
                 {% if not states('sensor.dhw_cop') == 'unavailable' %}
