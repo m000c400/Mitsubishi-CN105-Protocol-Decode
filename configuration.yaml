@@ -190,6 +190,37 @@ mqtt:
 template:
   sensor:
     - name: "DHW CoP"
-      state: "{{(states('sensor.delivered_dhw')|float/states('sensor.consumed_dhw')|float)|round(2)}}"
+      state: "{{(states('sensor.delivered_hot_water')|float/states('sensor.consumed_hot_water')|float)|round(2)}}"
     - name: "Heat CoP"
       state: "{{(states('sensor.delivered_heat')|float/states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "ASHP Consumed Energy"
+      unit_of_measurement: "kWh"
+      icon: "mdi:meter-electric-outline"
+      state: "{{(states('sensor.consumed_hot_water')|float + states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "Percentage Total"
+      unit_of_measurement: "%"
+      icon: "mdi:percent"
+      state: "{{((states('sensor.ashp_consumed_energy')|float / states('sensor.estimated_yesterday_usage')|float)*100)|round(0)}}"
+    - name: "Total CoP"
+      state: "{% if not states('sensor.heat_cop') == 'unavailable' %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{ (states('sensor.dhw_cop')|float+states('sensor.heat_cop')|float)/2 | float | round(2) }}
+                {% else %}
+                  {{ states('sensor.heat_cop')|float|round(2) }}
+                {% endif %}
+              {% else %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{states('sensor.dhw_cop')|float|round(2) }}
+                {% else %}
+                  {% set total_cop = 0|float|round(2) %}
+                {% endif %}
+              {% endif %}"
+    - name: "ASHP Efficiency"
+      icon: "mdi:generator-stationary"
+      state: "{% if 0 < states('sensor.total_cop')|float < 2 %}Poor
+              {% elif 2 < states('sensor.total_cop')|float < 3 %}Average
+              {% elif 3 < states('sensor.total_cop')|float < 3.5 %}Good
+              {% elif 3.5 < states('sensor.total_cop')|float < 4 %}Very Good
+              {% elif states('sensor.total_cop')|float > 4 %}Excellent
+              {% else %}Not Available
+              {% endif %}"
