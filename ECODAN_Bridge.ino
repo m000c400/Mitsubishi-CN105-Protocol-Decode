@@ -28,7 +28,7 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "v3.2";
+String FirmwareVersion = "v3.3";
 
 
 int RxPin = 14;  //Rx
@@ -113,6 +113,8 @@ int WiFiOneShot = 1;
 int Zone1_Update_in_Progress = 0;
 int Zone2_Update_in_Progress = 0;
 int DHW_Update_in_Progress = 0;
+int HeatPump_Update_in_Progress = 0;
+int Buffered_Update = 0;
 float Zone1TemperatureSetpoint_UpdateValue, Zone2TemperatureSetpoint_UpdateValue;
 int Zone1FlowSetpoint_UpdateValue, Zone2FlowSetpoint_UpdateValue;
 
@@ -171,6 +173,11 @@ void loop() {
     saveConfig();
   }
 
+  if ((Buffered_Update == 1) && (HeatPump_Update_in_Progress != 1)) {
+    DEBUG_PRINTLN("Pushing Buffered Update");
+    HeatPump.TriggerStatusStateMachine();  // Trigger update of heat pump
+    Buffered_Update = 0;
+  }
 
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(Green_RGB_LED, LOW);  // Turn the Green LED Off
@@ -219,14 +226,45 @@ void HeatPumpQueryStateEngine(void) {
   HeatPump.StatusStateMachine();
   if (HeatPump.UpdateComplete()) {
     DEBUG_PRINTLN("Update Complete");
-    if (Zone1_Update_in_Progress == 1) { Zone1_Update_in_Progress = 0; }
-    if (Zone2_Update_in_Progress == 1) { Zone2_Update_in_Progress = 0; }
-
+    HeatPump_Update_in_Progress = 0;
     digitalWrite(Green_RGB_LED, HIGH);  // Flash the Green LED full brightness
     delay(10);                          // Hold for 10ms then WiFi brightness will return it to 25%
-    if (MQTTReconnect()) {
-      Zone1Report();
-      Zone2Report();
+    if (MQTTReconnect()) {              // If MQTT is connected
+
+      // Both Zones are currently being updated, this cycle should contain the results from the first triggered
+      if ((Zone1_Update_in_Progress == 1) | (Zone2_Update_in_Progress == 1)) {
+
+        if ((Zone1_Update_in_Progress == 1) & (Zone1TemperatureSetpoint_UpdateValue == HeatPump.Status.Zone1TemperatureSetpoint)) {
+          DEBUG_PRINTLN("Zone1 Update Completed");
+          Zone1_Update_in_Progress = 0;  // Update is done
+        } else if (Zone1_Update_in_Progress == 1) {
+          if (Buffered_Update != 1) {
+            DEBUG_PRINTLN("There is not buffered update so marking done");
+            Zone1_Update_in_Progress = 0;  // Update is done
+          }
+        }
+
+        if ((Zone2_Update_in_Progress == 1) & (Zone2TemperatureSetpoint_UpdateValue == HeatPump.Status.Zone2TemperatureSetpoint)) {
+          DEBUG_PRINTLN("Zone2 Update Completed");
+          Zone2_Update_in_Progress = 0;  // Update is done
+        } else if (Zone2_Update_in_Progress == 1) {
+          DEBUG_PRINTLN("Zone2 update was expected but not seen");
+          if (Buffered_Update != 1) {
+            DEBUG_PRINTLN("There is not buffered update so marking done");
+            Zone2_Update_in_Progress = 0;  // Update is done
+          }
+        }
+      }
+
+
+      if (Zone1_Update_in_Progress == 0) {  // If a Zone Update is in progress, skip MQTT update for one cycle
+        Zone1Report();
+      }
+      if (Zone2_Update_in_Progress == 0) {  // If a Zone Update is in progress, skip MQTT update for one cycle
+        Zone2Report();
+      }
+
+
       if (DHW_Update_in_Progress == 0) {  // Added because the FTC took time to enable DHW, so don't publish DHW Report after an update
         HotWaterReport();
       } else {
@@ -260,7 +298,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone1 Temperature Setpoint");
     if (Zone2_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone2 Update is currently in progress");
-      HeatPump.SetZoneTempSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, BOTH);  // Set the Payload and to BOTH Zones as both are requiring update
+      Buffered_Update = 1;
+      HeatPump.SetZoneTempSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
     } else {
       HeatPump.SetZoneTempSetpoint(Payload.toFloat(), HeatPump.Status.Zone2TemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
     }
@@ -271,7 +310,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone1 Flow Setpoint");
     if (Zone2_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone2 Update is currently in progress");
-      HeatPump.SetZoneFlowSetpoint(Payload.toInt(), Zone2FlowSetpoint_UpdateValue, BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      Buffered_Update = 1;
+      HeatPump.SetZoneFlowSetpoint(Payload.toInt(), Zone2FlowSetpoint_UpdateValue, ZONE1);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
       HeatPump.SetZoneFlowSetpoint(Payload.toInt(), HeatPump.Status.Zone2FlowTemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
     }
@@ -279,10 +319,11 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     Zone1_Update_in_Progress = 1;
   }
   if (Topic == MQTTCommandZone1CurveSetpoint) {
-    DEBUG_PRINTLN("MQTT Set Zone2 Weather Comp Setpoint");
+    DEBUG_PRINTLN("MQTT Set Zone1 Weather Comp Setpoint");
     if (Zone2_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone2 Update is currently in progress");
-      HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, BOTH);  // Set the Payload and to BOTH Zones as both are requiring update
+      Buffered_Update = 1;
+      HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
     } else {
       HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), HeatPump.Status.Zone2TemperatureSetpoint, ZONE1);  // Set the new value and the current value of the other zone
     }
@@ -297,7 +338,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone2 Temperature Setpoint");
     if (Zone1_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone1 Update is currently in progress");
-      HeatPump.SetZoneTempSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      Buffered_Update = 1;
+      HeatPump.SetZoneTempSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
       HeatPump.SetZoneTempSetpoint(HeatPump.Status.Zone1TemperatureSetpoint, Payload.toFloat(), ZONE2);  // Set the new value and the current value of the other zone
     }
@@ -308,7 +350,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone2 Flow Setpoint");
     if (Zone1_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone1 Update is currently in progress");
-      HeatPump.SetZoneFlowSetpoint(Zone1FlowSetpoint_UpdateValue, Payload.toInt(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      Buffered_Update = 1;
+      HeatPump.SetZoneFlowSetpoint(Zone1FlowSetpoint_UpdateValue, Payload.toInt(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
       HeatPump.SetZoneFlowSetpoint(HeatPump.Status.Zone1FlowTemperatureSetpoint, Payload.toInt(), ZONE2);  // Set the new value and the current value of the other zone
     }
@@ -319,7 +362,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINTLN("MQTT Set Zone2 Weather Comp Setpoint");
     if (Zone1_Update_in_Progress == 1) {
       DEBUG_PRINTLN("Zone1 Update is currently in progress");
-      HeatPump.SetZoneCurveSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), BOTH);  // Set the Payload and the Zone2 value that is in progress of being written
+      Buffered_Update = 1;
+      HeatPump.SetZoneCurveSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
     } else {
       HeatPump.SetZoneCurveSetpoint(HeatPump.Status.Zone1TemperatureSetpoint, Payload.toFloat(), ZONE2);  // Set the new value and the current value of the other zone
     }
@@ -334,12 +378,10 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     DHW_Update_in_Progress = 1;
     HeatPump.ForceDHW(Payload.toInt());
   }
-
   if (Topic == MQTTCommandHotwaterSetpoint) {
     DEBUG_PRINTLN("MQTT Set HW Setpoint");
     HeatPump.SetHotWaterSetpoint(Payload.toInt());
   }
-
   if (Topic == MQTTCommandSystemHeatingMode) {
     DEBUG_PRINTLN("MQTT Set Heating Mode");
     HeatPump.SetHeatingControlMode(&Payload, BOTH);
@@ -353,7 +395,14 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     HeatPump.Scratch(Payload.toInt());
   }
 
-  HeatPump.TriggerStatusStateMachine();  // Trigger update of heat pump
+  // Block the Update Request if one is in progress
+  if (Buffered_Update == 0) {
+    HeatPump_Update_in_Progress = 1;
+    HeatPump.TriggerStatusStateMachine();  // Trigger update of heat pump
+  }
+  else{
+    DEBUG_PRINTLN("Blocking Update as one is in progress");
+  }
 }
 
 
