@@ -20,10 +20,12 @@ String MQTT_COMMAND_SYSTEM = MQTT_COMMAND + "/System";
 String MQTT_COMMAND_ZONE1_TEMP_SETPOINT = MQTT_COMMAND_ZONE1 + "/TempSetpoint";
 String MQTT_COMMAND_ZONE1_FLOW_SETPOINT = MQTT_COMMAND_ZONE1 + "/FlowSetpoint";
 String MQTT_COMMAND_ZONE1_CURVE_SETPOINT = MQTT_COMMAND_ZONE1 + "/CurveSetpoint";
+String MQTT_COMMAND_ZONE1_NOMODE_SETPOINT = MQTT_COMMAND_ZONE1 + "/ThermostatSetpoint";
 
 String MQTT_COMMAND_ZONE2_TEMP_SETPOINT = MQTT_COMMAND_ZONE2 + "/TempSetpoint";
 String MQTT_COMMAND_ZONE2_FLOW_SETPOINT = MQTT_COMMAND_ZONE2 + "/FlowSetpoint";
 String MQTT_COMMAND_ZONE2_CURVE_SETPOINT = MQTT_COMMAND_ZONE2 + "/CurveSetpoint";
+String MQTT_COMMAND_ZONE2_NOMODE_SETPOINT = MQTT_COMMAND_ZONE2 + "/ThermostatSetpoint";
 
 String MQTT_COMMAND_HOTWATER_SETPOINT = MQTT_COMMAND_HOTWATER + "/Setpoint";
 String MQTT_COMMAND_HOTWATER_BOOST = MQTT_COMMAND_HOTWATER + "/Boost";
@@ -34,10 +36,12 @@ String MQTT_COMMAND_SYSTEM_TEMP = MQTT_COMMAND_SYSTEM + "/Temp";
 String MQTTCommandZone1TempSetpoint = MQTT_COMMAND_ZONE1_TEMP_SETPOINT;
 String MQTTCommandZone1FlowSetpoint = MQTT_COMMAND_ZONE1_FLOW_SETPOINT;
 String MQTTCommandZone1CurveSetpoint = MQTT_COMMAND_ZONE1_CURVE_SETPOINT;
+String MQTTCommandZone1NoModeSetpoint = MQTT_COMMAND_ZONE1_NOMODE_SETPOINT;
 
 String MQTTCommandZone2TempSetpoint = MQTT_COMMAND_ZONE2_TEMP_SETPOINT;
 String MQTTCommandZone2FlowSetpoint = MQTT_COMMAND_ZONE2_FLOW_SETPOINT;
 String MQTTCommandZone2CurveSetpoint = MQTT_COMMAND_ZONE2_CURVE_SETPOINT;
+String MQTTCommandZone2NoModeSetpoint = MQTT_COMMAND_ZONE2_NOMODE_SETPOINT;
 
 String MQTTCommandHotwaterSetpoint = MQTT_COMMAND_HOTWATER_SETPOINT;
 String MQTTCommandHotwaterBoost = MQTT_COMMAND_HOTWATER_BOOST;
@@ -140,10 +144,12 @@ void RecalculateMQTTTopics() {
   MQTT_COMMAND_ZONE1_TEMP_SETPOINT = MQTT_COMMAND_ZONE1 + "/TempSetpoint";
   MQTT_COMMAND_ZONE1_FLOW_SETPOINT = MQTT_COMMAND_ZONE1 + "/FlowSetpoint";
   MQTT_COMMAND_ZONE1_CURVE_SETPOINT = MQTT_COMMAND_ZONE1 + "/CurveSetpoint";
+  MQTT_COMMAND_ZONE1_NOMODE_SETPOINT = MQTT_COMMAND_ZONE1 + "/ThermostatSetpoint";
 
   MQTT_COMMAND_ZONE2_TEMP_SETPOINT = MQTT_COMMAND_ZONE2 + "/TempSetpoint";
   MQTT_COMMAND_ZONE2_FLOW_SETPOINT = MQTT_COMMAND_ZONE2 + "/FlowSetpoint";
   MQTT_COMMAND_ZONE2_CURVE_SETPOINT = MQTT_COMMAND_ZONE2 + "/CurveSetpoint";
+  MQTT_COMMAND_ZONE2_NOMODE_SETPOINT = MQTT_COMMAND_ZONE2 + "/ThermostatSetpoint";
 
   MQTT_COMMAND_HOTWATER_SETPOINT = MQTT_COMMAND_HOTWATER + "/Setpoint";
   MQTT_COMMAND_HOTWATER_BOOST = MQTT_COMMAND_HOTWATER + "/Boost";
@@ -154,10 +160,12 @@ void RecalculateMQTTTopics() {
   MQTTCommandZone1TempSetpoint = MQTT_COMMAND_ZONE1_TEMP_SETPOINT;
   MQTTCommandZone1FlowSetpoint = MQTT_COMMAND_ZONE1_FLOW_SETPOINT;
   MQTTCommandZone1CurveSetpoint = MQTT_COMMAND_ZONE1_CURVE_SETPOINT;
+  MQTTCommandZone1NoModeSetpoint = MQTT_COMMAND_ZONE1_NOMODE_SETPOINT;
 
   MQTTCommandZone2TempSetpoint = MQTT_COMMAND_ZONE2_TEMP_SETPOINT;
   MQTTCommandZone2FlowSetpoint = MQTT_COMMAND_ZONE2_FLOW_SETPOINT;
   MQTTCommandZone2CurveSetpoint = MQTT_COMMAND_ZONE2_CURVE_SETPOINT;
+  MQTTCommandZone2NoModeSetpoint = MQTT_COMMAND_ZONE2_NOMODE_SETPOINT;
 
   MQTTCommandHotwaterSetpoint = MQTT_COMMAND_HOTWATER_SETPOINT;
   MQTTCommandHotwaterBoost = MQTT_COMMAND_HOTWATER_BOOST;
@@ -166,6 +174,7 @@ void RecalculateMQTTTopics() {
   MQTTCommandSystemPower = MQTT_COMMAND_SYSTEM_POWER;
   MQTTCommandSystemTemp = MQTT_COMMAND_SYSTEM_TEMP;
 }
+
 
 void saveConfig() {
   // Read MQTT Portal Values for save to file system
@@ -268,9 +277,11 @@ void MQTTonConnect(void) {
   MQTTClient.subscribe(MQTTCommandZone1TempSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandZone1FlowSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandZone1CurveSetpoint.c_str());
+  MQTTClient.subscribe(MQTTCommandZone1NoModeSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandZone2TempSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandZone2FlowSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandZone2CurveSetpoint.c_str());
+  MQTTClient.subscribe(MQTTCommandZone2NoModeSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandSystemHeatingMode.c_str());
   MQTTClient.subscribe(MQTTCommandHotwaterSetpoint.c_str());
   MQTTClient.subscribe(MQTTCommandHotwaterBoost.c_str());

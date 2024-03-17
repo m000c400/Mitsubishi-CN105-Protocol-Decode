@@ -28,7 +28,7 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "v3.3";
+String FirmwareVersion = "v3.4";
 
 
 int RxPin = 14;  //Rx
@@ -292,7 +292,56 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT(" with Payload ");
   DEBUG_PRINTLN(Payload.c_str());
 
+  // Curve or Temp Independent Thermostat Setting
+  // Heating Zone 1 Commands
+  if (Topic == MQTTCommandZone1NoModeSetpoint) {
+    DEBUG_PRINTLN("MQTT Set Zone1 Temperature Setpoint");
+    if (Zone2_Update_in_Progress == 1) {
+      DEBUG_PRINTLN("Zone2 Update is currently in progress");
+      Buffered_Update = 1;
+      if (HeatPump.Status.HeatingControlModeZ1 == 0) {
+        DEBUG_PRINT("Zone1 in Temperature Mode");
+        HeatPump.SetZoneTempSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
+      } else if (HeatPump.Status.HeatingControlModeZ1 == 2) {
+        DEBUG_PRINT("Zone1 in Compensation Curve Mode");
+        HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
+      }
+    } else {
+      if (HeatPump.Status.HeatingControlModeZ1 == 0) {
+        DEBUG_PRINT("Zone1 in Temperature Mode");
+        HeatPump.SetZoneTempSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
+      } else if (HeatPump.Status.HeatingControlModeZ1 == 2) {
+        DEBUG_PRINT("Zone1 in Compensation Curve Mode");
+        HeatPump.SetZoneCurveSetpoint(Payload.toFloat(), Zone2TemperatureSetpoint_UpdateValue, ZONE1);  // Set the Payload and to BOTH Zones as both are requiring update
+      }
+    }
+    Zone1TemperatureSetpoint_UpdateValue = Payload.toFloat();
+    Zone1_Update_in_Progress = 1;
+  }
+  // Heating Zone 2 Commands
+  if (Topic == MQTTCommandZone2NoModeSetpoint) {
+    DEBUG_PRINTLN("MQTT Set Zone2 Temperature Setpoint");
+    if (Zone1_Update_in_Progress == 1) {
+      DEBUG_PRINTLN("Zone1 Update is currently in progress");
+      Buffered_Update = 1;
+      if (HeatPump.Status.HeatingControlModeZ2 == 0) {
+        HeatPump.SetZoneTempSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
+      } else if (HeatPump.Status.HeatingControlModeZ2 == 2) {
+        HeatPump.SetZoneCurveSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
+      }
+    } else {
+      if (HeatPump.Status.HeatingControlModeZ2 == 0) {
+        HeatPump.SetZoneTempSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
+      } else if (HeatPump.Status.HeatingControlModeZ2 == 2) {
+        HeatPump.SetZoneCurveSetpoint(Zone1TemperatureSetpoint_UpdateValue, Payload.toFloat(), ZONE2);  // Set the Payload and the Zone2 value that is in progress of being written
+      }
+    }
+    Zone2TemperatureSetpoint_UpdateValue = Payload.toFloat();
+    Zone2_Update_in_Progress = 1;
+  }
 
+
+  // Setting Specific Topics
   // Heating Zone 1 Commands
   if (Topic == MQTTCommandZone1TempSetpoint) {
     DEBUG_PRINTLN("MQTT Set Zone1 Temperature Setpoint");
@@ -399,8 +448,7 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   if (Buffered_Update == 0) {
     HeatPump_Update_in_Progress = 1;
     HeatPump.TriggerStatusStateMachine();  // Trigger update of heat pump
-  }
-  else{
+  } else {
     DEBUG_PRINTLN("Blocking Update as one is in progress");
   }
 }
