@@ -1,0 +1,222 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+mqtt:
+  sensor:  
+  
+    - name: "ASHP Status"
+      state_topic: "Ecodan/ASHP/LWT"
+      value_template: "{{ value_json }}"
+
+    - name: "Outside Temperature"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.OutsideTemp }}"
+    - name: "Heat Pump Power"
+      state_topic: "Ecodan/ASHP/Status/System"
+      icon: "mdi:lightning-bolt"
+      value_template: "{{ value_json.HeaterPower }}"
+    - name: "Hot Water Temperature"
+      state_topic: "Ecodan/ASHP/Status/HotWater"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.Temperature }}"
+    - name: "Upstairs Temperature"
+      state_topic: "Ecodan/ASHP/Status/Zone1"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.Temperature }}"
+    - name: "Downstairs Temperature"
+      state_topic: "Ecodan/ASHP/Status/Zone2"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.Temperature }}"
+    - name: "Upstairs Setpoint"
+      state_topic: "Ecodan/ASHP/Status/Zone1"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.Setpoint | float(1) }}"
+    - name: "Downstairs Setpoint"
+      state_topic: "Ecodan/ASHP/Status/Zone2"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.Setpoint | float(1) }}"
+    - name: "Heater Return"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.HeaterReturn }}"
+    - name: "Heater Flow"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.HeaterFlow }}"
+    - name: "Heater Setpoint"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.HeaterSetpoint }}"
+    - name: "Compressor"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "Hz"
+      icon: "mdi:sine-wave"
+      value_template: "{{ value_json.Compressor }}"
+    - name: "Flow Rate"
+      state_topic: "Ecodan/ASHP/Status/System"
+      unit_of_measurement: "l/min"
+      icon: "mdi:waves-arrow-right"
+      value_template: "{{ value_json.FlowRate }}"
+    - name: "Defrost"
+      state_topic: "Ecodan/ASHP/Status/System"
+      value_template: "{{ value_json.Defrost }}"
+    - name: "Zone1 Flow Setpoint"
+      state_topic: "Ecodan/ASHP/Status/Zone1"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.FSP }}"
+    - name: "Zone2 Flow Setpoint"
+      state_topic: "Ecodan/ASHP/Status/Zone2"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.FSP }}"
+    - name: "Consumed Heat"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "kWh"
+      value_template: "{{ value_json.CHEAT }}"
+    - name: "Delivered Heat"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "kWh"
+      value_template: "{{ value_json.DHEAT }}"
+    - name: "Consumed DHW"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "kWh"
+      value_template: "{{ value_json.CDHW }}"
+    - name: "Delivered DHW"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "kWh"
+      value_template: "{{ value_json.DDHW }}"
+    - name: "Primary Flowrate"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "l/min"
+      icon: "mdi:waves-arrow-right"
+      value_template: "{{ value_json.PrimaryFlowRate }}"
+    - name: "Boiler Flow"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.BoilerFlow }}"
+    - name: "Boiler Return"
+      state_topic: "Ecodan/ASHP/Status/Advanced"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.BoilerReturn }}"
+
+
+  climate:
+    - name: "Upstairs"
+      unique_id: "ashp_zone1"
+      object_id: "upstairs_climate"
+      current_temperature_topic: "Ecodan/ASHP/Status/Zone1"
+      current_temperature_template: "{{ value_json.Temperature }}"
+      temperature_command_topic: "Ecodan/ASHP/Command/Zone1/ThermostatSetpoint"
+      temperature_unit: C
+      max_temp: 30
+      min_temp: 10
+      temp_step: 1
+      precision: 0.5
+      initial: 10
+      temperature_state_topic: "Ecodan/ASHP/Status/Zone1"
+      temperature_state_template: "{{ value_json.Setpoint }}"
+      mode_state_topic: "Ecodan/ASHP/Status/System"
+      mode_state_template: "{{ 'heat' if value_json.SystemOperationMode=='Heating' else 'off' }}"
+      modes: ["heat","off"]
+      availability:
+        - topic: "Ecodan/ASHP/LWT"
+          template: "{{ value_json }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+      
+    - name: "Downstairs"
+      unique_id: "ashp_zone2"
+      object_id: "downstairs_climate"
+      current_temperature_topic: "Ecodan/ASHP/Status/Zone2"
+      current_temperature_template: "{{ value_json.Temperature }}"
+      temperature_command_topic: "Ecodan/ASHP/Command/Zone2/ThermostatSetpoint"
+      temperature_unit: C
+      max_temp: 30
+      min_temp: 10
+      temp_step: 1
+      precision: 0.5
+      initial: 10
+      temperature_state_topic: "Ecodan/ASHP/Status/Zone2"
+      temperature_state_template: "{{ value_json.Setpoint }}"
+      mode_state_topic: "Ecodan/ASHP/Status/System"
+      mode_state_template: "{{ 'heat' if value_json.SystemOperationMode=='Heating' else 'off' }}"
+      modes: ["heat","off"]
+      availability:
+        - topic: "Ecodan/ASHP/LWT"
+          template: "{{ value_json }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+
+
+  select:
+      command_topic: "Ecodan/ASHP/Command/System/HeatingMode"
+      name: "System Heating Mode"
+      state_topic: "Ecodan/ASHP/Status/Zone1"
+      value_template: "{{ 'Temperature Control' if value_json.HeatingControlMode=='Temp' else 
+			 'Fixed Flow' if value_json.HeatingControlMode=='Flow' else 
+			 'Compensation Flow' if value_json.HeatingControlMode=='Compensation' }} "
+      options:
+        - "Temperature Control"
+        - "Fixed Flow"
+        - "Compensation Flow"
+
+
+  switch:
+    - name: "Hot Water Boost"
+      unique_id: "ashp_dhw"
+      state_topic: "Ecodan/ASHP/Status/HotWater"
+      value_template: "{{ value_json.HotWaterBoostActive }}"
+      icon: "mdi:plus"
+      state_on: 1
+      state_off: 0
+      command_topic: "Ecodan/ASHP/Command/HotWater/Boost"
+      payload_on: 1
+      payload_off: 0
+      availability:
+        - topic: "Ecodan/ASHP/LWT"
+          template: "{{ value_json }}"
+          payload_available: "online"
+          payload_not_available: "offline"
+      
+template:
+  sensor:
+    - name: "DHW CoP"
+      state: "{{(states('sensor.delivered_hot_water')|float/states('sensor.consumed_hot_water')|float)|round(2)}}"
+    - name: "Heat CoP"
+      state: "{{(states('sensor.delivered_heat')|float/states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "ASHP Consumed Energy"
+      unit_of_measurement: "kWh"
+      icon: "mdi:meter-electric-outline"
+      state: "{{(states('sensor.consumed_hot_water')|float + states('sensor.consumed_heat')|float)|round(2)}}"
+    - name: "Total CoP"
+      state: "{% if not states('sensor.heat_cop') == 'unavailable' %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{ (states('sensor.dhw_cop')|float+states('sensor.heat_cop')|float)/2 | float | round(2) }}
+                {% else %}
+                  {{ states('sensor.heat_cop')|float|round(2) }}
+                {% endif %}
+              {% else %}
+                {% if not states('sensor.dhw_cop') == 'unavailable' %}
+                  {{states('sensor.dhw_cop')|float|round(2) }}
+                {% else %}
+                  {% set total_cop = 0|float|round(2) %}
+                {% endif %}
+              {% endif %}"
+    - name: "ASHP Efficiency"
+      icon: "mdi:generator-stationary"
+      state: "{% if 0 < states('sensor.total_cop')|float < 2 %}Poor
+              {% elif 2 < states('sensor.total_cop')|float < 3 %}Average
+              {% elif 3 < states('sensor.total_cop')|float < 3.5 %}Good
+              {% elif 3.5 < states('sensor.total_cop')|float < 4 %}Very Good
+              {% elif states('sensor.total_cop')|float > 4 %}Excellent
+              {% else %}Not Available
+              {% endif %}"

@@ -219,9 +219,9 @@ Several Unknown Temperatures
 | 0x14  |    |   |   |   |   |   |   |   |   |    | PF |    |    |    |    |    |  
 * PF : Primary Flow Rate (l/min)
 ### 0x26
-| 0 | 1 | 2 |  3  | 4  | 5  | 6  | 7 |   8  |  9   |  10 |  11 | 12 | 13 | 14 |
-|---|---|---|-----|----|----|----|---|------|------|-----|-----|----|----|----|
-|   |   |   | Pwr | OM | HW | Op |   | HWPS | HWSP | HSP | HSP | SP | SP |    |
+| 0 | 1 | 2 |  3  | 4  | 5  | 6  |  7 |   8  |  9   |  10 |  11 | 12 | 13 | 14 |
+|---|---|---|-----|----|----|----|----|------|------|-----|-----|----|----|----|
+|   |   |   | Pwr | OM | HW |OpZ1|OpZ2| HWPS | HWSP | HSP | HSP | SP | SP |    |
 * Pwr - Power
   * 0 : Standby
   * 1 : On
@@ -233,7 +233,7 @@ Several Unknown Temperatures
 * HW - Hot Water Mode
   * 0 : Normal
   * 1 : Economy
-* Op - Operation Mode: 
+* Op - Operation Mode (Zone 1 / Zone 2): 
   * 0 : Temperature Mode
   * 1 : Flow Control Mode
   * 2 : Compensation Curve Mode
