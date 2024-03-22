@@ -28,7 +28,7 @@
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "v3.5";
+String FirmwareVersion = "v3.5.1";
 
 
 int RxPin = 14;  //Rx
