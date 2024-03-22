@@ -142,7 +142,7 @@ void ECODAN::KeepAlive(void) {
   DeviceStream->write(Buffer, CommandSize);
 }
 
-void ECODAN::SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones) {
+void ECODAN::SetZoneTempSetpoint(float Zone1Target, float Zone2Target, uint8_t Zones) {
   uint8_t Buffer[COMMANDSIZE];
   uint8_t CommandSize = 0;
 
@@ -163,8 +163,6 @@ void ECODAN::SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8
 }
 
 void ECODAN::SetZoneCurveSetpoint(float Zone1Target, float Zone2Target, uint8_t Zones) {
-  DEBUG_PRINT("Zone1Target (float): ");
-  DEBUG_PRINTLN(Zone1Target);
   uint8_t Buffer[COMMANDSIZE];
   uint8_t CommandSize = 0;
 
