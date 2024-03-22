@@ -34,7 +34,7 @@ public:
 
   void SetZoneTempSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
   void SetZoneFlowSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
-  void SetZoneCurveSetpoint(uint8_t Zone1Target, uint8_t Zone2Target, uint8_t Zones);
+  void SetZoneCurveSetpoint(float Zone1Target, float Zone2Target, uint8_t Zones);
   void ForceDHW(uint8_t OnOff);
 
   void SetHotWaterSetpoint(uint8_t Target);

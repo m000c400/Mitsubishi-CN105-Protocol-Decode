@@ -563,16 +563,14 @@ void ECODANDECODER::EncodeSystemUpdate(uint8_t Flags, float Zone1TempSetpoint, f
   }
 
   if ((Flags & SET_ZONE_SETPOINT) == SET_ZONE_SETPOINT) {
-    ScaledTarget = Zone1TempSetpoint;
-    ScaledTarget *= 100;
+    ScaledTarget = Zone1TempSetpoint * 100;
     UpperByte = (uint8_t)(ScaledTarget >> 8);
     LowerByte = (uint8_t)(ScaledTarget & 0x00ff);
 
     TxMessage.Payload[10] = UpperByte;
     TxMessage.Payload[11] = LowerByte;
 
-    ScaledTarget = Zone2TempSetpoint;
-    ScaledTarget *= 100;
+    ScaledTarget = Zone2TempSetpoint * 100;
     UpperByte = (uint8_t)(ScaledTarget >> 8);
     LowerByte = (uint8_t)(ScaledTarget & 0x00ff);
 
