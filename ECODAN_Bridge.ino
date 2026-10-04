@@ -412,6 +412,7 @@ unsigned long lastConsumedEnergyTimestamp = 0;   // variable for comparing milli
 unsigned long lastDeliveredEnergyTimestamp = 0;  // variable for comparing millis counter
 unsigned long buttonPressStartTime = 0;          // variable for comparing millis counter
 unsigned long lastBlinkTime = 0;                 // variable for comparing millis counter
+unsigned long PortalRetryMillis = 0;             // Last STA retry while the config portal is open
 bool buttonWasPressed = false;
 bool ledState = false;
 int FTCLoopSpeed, CPULoopSpeed;  // variable for holding loop time in ms
@@ -529,7 +530,7 @@ void setup() {
     saveConfig();
   }
   setupTelnet();
-  startTelnet();                  // Enable for Debugging Messages
+  startTelnet();  // Enable for Debugging Messages
 
   MQTTClient1.setBufferSize(2048);  // Increase MQTT Buffer Size
   MQTTClient2.setBufferSize(2048);  // Increase MQTT Buffer Size
@@ -756,6 +757,14 @@ void loop() {
 #ifdef ARDUINO_M5STACK_ATOMS3  // Define the M5Stack LED
     myLED.setPixel(0, L_BLUE, 1);
 #endif
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+    // Saved WiFi and nobody on the portal AP: retry the saved network (any AP) every 60 s
+    if (wifiManager.getWiFiIsSaved() && WiFi.softAPgetStationNum() == 0 && millis() - PortalRetryMillis >= 60000UL) {
+      PortalRetryMillis = millis();
+      DEBUG_PRINTLN(F("Config portal active, retrying saved WiFi"));
+      WiFi.begin();
+    }
+#endif
     WiFiConnectedLastLoop = false;
   } else {                              // WiFi is connected
     if (!WiFiConnectedLastLoop) {       // Used to update LEDs only on transition of state
@@ -769,7 +778,15 @@ void loop() {
 #endif
     }
 #if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
-    WiFiRoamHandler(!WiFiConnectedLastLoop);  // Patch local : borne au meilleur signal
+    WiFiRoamHandler(!WiFiConnectedLastLoop);    // Connect to a stronger mesh AP
+    if (wifiManager.getConfigPortalActive()) {  // Connected while the boot config portal is still open
+      DEBUG_PRINTLN(F("WiFi connected, closing config portal"));
+      wifiManager.stopConfigPortal();  // Closes the portal AP, but also stops the web server
+    }
+    if (!wifiManager.getConfigPortalActive() && !wifiManager.getWebPortalActive()) {  // Web server stopped (portal closed or timed out): restart it
+      DEBUG_PRINTLN(F("Starting Web Portal"));
+      wifiManager.startWebPortal();
+    }
 #endif
     WiFiOneShot = true;
     WiFiConnectedLastLoop = true;
