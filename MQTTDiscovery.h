@@ -1,9 +1,9 @@
 //-- MQTT Home Assistant Auto Discovery --//
 
-const int discovery_topics PROGMEM = 127;
+const int discovery_topics PROGMEM = 128;
 
 // Build the sensor JSON structure
-const char MQTT_DISCOVERY_OBJ_ID[][3] PROGMEM = { "aa", "ab", "ac", "ad", "ae", "af", "ag", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "au", "av", "aw", "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl", "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca", "cb", "cc", "cd", "cu", "cv", "cw", "cx", "cz", "da", "db", "dc", "de", "df", "dg", "dh", "di", "dj", "dk", "dl", "dm", "dn", "do", "dp", "dq", "ds", "dt", "dx", "dz", "ea", "eb", "ec", "ed", "ee", "ef", "eg", "eh", "ei", "ej", "ek", "el", "em", "en", "eo", "ep", "eq", "er", "et", "eu", "ev", "ew", "ex", "ey", "ez", "ce", "cf", "cg", "dw", "du", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp", "dr", "es", "cs", "fa", "ct", "dv", "dx", "dy", "es" };
+const char MQTT_DISCOVERY_OBJ_ID[][3] PROGMEM = { "aa", "ab", "ac", "ad", "ae", "af", "ag", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "au", "av", "aw", "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl", "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca", "cb", "cc", "cd", "cu", "cv", "cw", "cx", "cz", "da", "db", "dc", "de", "df", "dg", "dh", "di", "dj", "dk", "dl", "dm", "dn", "do", "dp", "dq", "ds", "dt", "dx", "dz", "ea", "eb", "ec", "ed", "ee", "ef", "eg", "eh", "ei", "ej", "ek", "el", "em", "en", "eo", "ep", "eq", "er", "et", "eu", "ev", "ew", "ex", "ey", "ez", "fa", "ce", "cf", "cg", "dw", "du", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp", "dr", "es", "cs", "fa", "ct", "dv", "dx", "dy", "es" };
 
 const char MQTT_SENSOR_UNIQUE_ID[][32] PROGMEM = {
   "ashp_bridge_lwt_",
@@ -110,6 +110,7 @@ const char MQTT_SENSOR_UNIQUE_ID[][32] PROGMEM = {
   "gshp_brine_in_",
   "gshp_brine_out_",
   "ashp_est_cop_today",
+  "ashp_booster2pl_active_",
 
   "ashp_dhw_climate_",  //65
   "ashp_Zone1_climate_",
@@ -271,6 +272,7 @@ const char MQTT_MDI_ICONS[][30] PROGMEM = {
   "mdi:heating-coil",
   "mdi:heating-coil",
   "mdi:poll",
+  "mdi:thermometer-plus",
 
   "mdi:thermostat",
   "mdi:thermostat",  //80
@@ -404,6 +406,7 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Sole-Einlasstemperatur",                    // Brine Inlet Temperature
   "Sole-Auslasstemperatur",                    // Brine Outlet Temperature
   "Gesamt-CoP heute",                          // Total CoP Today
+  "Zusatzheizung 2 Stufe 2",
 
   "Warmwasserthermostat",      // DHW Thermostat
   "Zone 1 Thermostat",         // Zone 1 Thermostat //80
@@ -573,6 +576,7 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Keruupiirin tulolämpötila",               // Brine Inlet Temperature
   "Keruupiirin lähtölämpötila",              // Brine Outlet Temperature
   "Kokonais-CoP tänään",                     // Total CoP Today
+  "Lisälämmitin 2 Porras 2",
 
   "LKV-termostaatti",                  // DHW Thermostat
   "Vyöhykkeen 1 termostaatti",         // Zone 1 Thermostat //80
@@ -741,6 +745,7 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Brine-inloppstemperatur",                 // Brine Inlet Temperature
   "Brine-utloppstemperatur",                 // Brine Outlet Temperature
   "Total-COP idag",                          // Total CoP Today
+  "Tillsatsvärmare 2 Steg 2",
 
   "VV-termostat",                            // DHW Thermostat
   "Zon 1 termostat",                         // Zone 1 Thermostat //80
@@ -909,6 +914,7 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Temp. Ingresso Salamoia",
   "Temp. Uscita Salamoia",
   "CoP Totale Oggi",
+  "Riscaldatore Integrativo 2 Stadio 2",
 
   "Termostato ACS",
   "Termostato Zona 1",  //80
@@ -1077,6 +1083,7 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Temp. Entrada Salmuera",
   "Temp. Salida Salmuera",
   "COP Total Hoy",
+  "Calentador de Apoyo 2 Etapa 2",
 
   "Termostato ACS",
   "Termostato Zona 1",  //80
@@ -1246,6 +1253,7 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Brine Inlet Temperature",
   "Brine Outlet Temperature",
   "Total CoP Today",
+  "Booster Heater 2 Stage 2",
 
   "DHW Thermostat",
   "Zone 1 Thermostat",  //80
@@ -1416,6 +1424,7 @@ const char MQTT_SENSOR_NAME[][60] PROGMEM = { // Recommended to increase [45] to
   "Temperatura wlotu solanki",
   "Temperatura wylotu solanki",
   "Calkowity COP dzisiaj",
+  "Grzalka wspomagajaca 2 Stopien 2",
 
   "Termostat CWU",
   "Termostat Strefa 1",  //80
@@ -1586,6 +1595,7 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Température entrée eau glycolée",
   "Température sortie eau glycolée",
   "COP total aujourd'hui",
+  "Réchauffeur de boucle 2 Étage 2",
 
   "Thermostat ECS",
   "Thermostat Zone 1",  //80
@@ -1755,6 +1765,7 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Brine Inlaattemperatuur",
   "Brine Uitlaattemperatuur",
   "Totaal CoP Vandaag",
+  "Bijverwarming 2 Trap 2",
 
   "SWW Thermostaat",
   "Zone 1 Thermostaat",  //80
@@ -1978,7 +1989,8 @@ int MQTT_TOPIC_POS[] PROGMEM = {
   2,
   3,
   3,
-  7
+  7,
+  3
 };
 
 int MQTT_UNITS_POS[] PROGMEM = {
@@ -2085,7 +2097,8 @@ int MQTT_UNITS_POS[] PROGMEM = {
   0,
   2,
   2,
-  8
+  8,
+  0
 };
 
 
@@ -2295,6 +2308,7 @@ const char MQTT_SENSOR_VALUE_TEMPLATE[][154] PROGMEM = {
   "{{ value_json.BrineInletTemp }}",
   "{{ value_json.BrineOutletTemp }}",
   "{{ value_json.OB_TOTAL_CoP_TDay }}",
+  "{{ value_json.Booster2Plus }}",
   "{{ value_json }}",
   "{{ value_json.Setpoint }}",  //80
   "{{ value_json.FSP }}",

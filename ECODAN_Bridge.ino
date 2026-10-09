@@ -197,6 +197,12 @@ float Z2_CurveFSP = 30;
 float FlowTemp_Last = 0;
 float FlowTemp_Target = 0;
 int Flow_Inc_Count = 0;
+// Flow-following persistence gate (see Flow Temperature Overshoot Hysterisis in loop())
+const uint32_t FF_RAISE_PERSIST_MS = 60000;   // Reading must hold above the trigger this long before the setpoint is raised
+const uint32_t FF_LOWER_PERSIST_MS = 120000;  // Reading must hold below the release level this long before the setpoint is lowered
+const float FF_FASTPATH_EXC = 1.5;            // At or above this excess (C) skip the gate: too close to the 2.0C outdoor unit stop
+bool FF_RaiseArmed = false, FF_LowerArmed = false;
+uint32_t FF_RaiseArmedMs = 0, FF_LowerArmedMs = 0;
 int lastResetDay = -1;
 const int OAT_Window_Size = 300;
 int OAT_readings[OAT_Window_Size];
@@ -498,12 +504,12 @@ void setup() {
 
 #ifndef ARDUINO_WT32_ETH01
   pinMode(Reset_Button, INPUT);  // Pushbutton on other modules
-#endif
 
   if (digitalRead(Reset_Button) == LOW) {  // Inverted (Button Pushed is LOW at boot)
     LED_GPIO = 42;                         // Change for Asgard Firmware
     Reset_Button_pressed_at_boot = true;   // Ignoring push button state after boot
   }
+#endif
 
 
 // -- Lights for ESP8266 and ESP32 -- //
@@ -897,6 +903,7 @@ void loop() {
     PostDHWTimer = false;                                                // End
     CalculateCompCurve();                                                // Delay this until 60s after mode finished
     Flow_Inc_Count = 0;                                                  // Reset Flow Following Counter
+    FF_RaiseArmed = FF_LowerArmed = false;  // Clear flow following persistence timers
   }
 
   // -- Defrost Handler -- //
@@ -946,6 +953,7 @@ void loop() {
         HeatPump.SetFlowSetpoint(FlowTemp_Target, HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
         write_thermostats();                                                                     //
         Flow_Inc_Count = 0;                                                                      // Reset the Flow Temp Incrementer
+        FF_RaiseArmed = FF_LowerArmed = false;  // Clear flow following persistence timers
       }                                                                                          //
     }                                                                                            //
   } else if (FrequencyLastLoop == 0 && HeatPump.Status.CompressorFrequency > 0) {                // Transition of Compressor Off to On
@@ -993,59 +1001,69 @@ void loop() {
   }
 
 
-  // -- Flow Temperature Overshoot Hysterisis -- //
+  // -- Flow Temperature Overshoot Hysterisis (with persistence gate) -- //
   if ((HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled) {
-    if (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1) {  // Heating and Fixed Flow
-      if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > 1.0) && (FlowTemp_Last < HeatPump.Status.HeaterOutputFlowTemperature)) {
-        // On entry of a new high flow temperature
-        if (Flow_Inc_Count == 0) {
-          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
+    const bool ffHeating = (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1);  // Heating and Fixed Flow
+    const bool ffCooling = (HeatPump.Status.HeatCool == 1 && HeatPump.Status.HeatingControlModeZ1 == 3);  // Cooling
+    if (ffHeating || ffCooling) {
+      const float dir = ffHeating ? 1.0f : -1.0f;  // Cooling mirrors every comparison and step
+      const float flow = HeatPump.Status.HeaterOutputFlowTemperature;
+      const float fsp = HeatPump.Status.Zone1FlowTemperatureSetpoint;
+      const float exc = dir * (flow - fsp);                  // Flow excess over setpoint, in the direction that trips the outdoor unit
+      const bool moving = dir * (flow - FlowTemp_Last) > 0;  // Reading has just moved further from the setpoint
+      bool doRaise = false;
+
+      // Raise: reading must have moved away, then either hold for the persistence time or get close to the 2.0C stop
+      if (exc > 1.0f) {
+        if (!FF_RaiseArmed && moving) {
+          FF_RaiseArmed = true;
+          FF_RaiseArmedMs = millis();
+        }
+        if (exc >= FF_FASTPATH_EXC || (FF_RaiseArmed && (millis() - FF_RaiseArmedMs >= FF_RAISE_PERSIST_MS))) { doRaise = true; }
+      } else {
+        FF_RaiseArmed = false;  // Reading came back inside the band: forget it
+      }
+
+      if (doRaise) {
+        FF_LowerArmed = false;
+        if (Flow_Inc_Count == 0) {  // On first entry, remember the setpoint before following
+          FlowTemp_Target = fsp;
           FlowFollowingActive = false;
-        }                                                                                                                               // On First entry, set flow setpoint before
-        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {                                                                 // Maximum increases is 0.5C * setting
-          HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint + 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
-          HeatPump.Status.Zone1FlowTemperatureSetpoint += 0.5;
+        }
+        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {  // Maximum increases is 0.5C * setting
+          HeatPump.SetFlowSetpoint(fsp + dir * 0.5f, HeatPump.Status.HeatingControlModeZ1, ZONE1);
+          HeatPump.Status.Zone1FlowTemperatureSetpoint += dir * 0.5f;
           write_thermostats();
           Flow_Inc_Count++;  // This will be cancelled at the next compressor stop
           FlowFollowingActive = true;
+          FF_RaiseArmed = false;  // Re-arm only on the next movement of the reading
         }
-        if (HeatPump.Status.Zone1FlowTemperatureSetpoint < Z1_CurveFSP) {  // Cancel Flow Following if FSP exceeds Comp Curve Target
+        if (dir * (HeatPump.Status.Zone1FlowTemperatureSetpoint - Z1_CurveFSP) < 0) {  // Cancel Flow Following once the Comp Curve Target has passed the raised setpoint
           FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
           FlowFollowingActive = false;
         }
-      } else if ((Flow_Inc_Count > 0) && (HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint < 0.5)) {  // Flow Temp reducer if within 0.5C
-        HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint - 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);            // Need to avoid overwriting by onboard weather curve..
-        HeatPump.Status.Zone1FlowTemperatureSetpoint -= 0.5;
-        write_thermostats();
-        Flow_Inc_Count--;                                          // This will be cancelled at the next compressor stop
-        if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
-      }
-    } else if (HeatPump.Status.HeatCool == 1 && HeatPump.Status.HeatingControlModeZ1 == 3) {  // Cooling
-      if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint < -1.0) && (FlowTemp_Last > HeatPump.Status.HeaterOutputFlowTemperature)) {
-        // On entry of a new high flow temperature
-        if (Flow_Inc_Count == 0) {
-          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
-          FlowFollowingActive = false;
-        }                                                                                                                               // On First entry, set flow setpoint before
-        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {                                                                 // Maximum increases is -0.5C * 5 = -2.5C
-          HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint - 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
-          HeatPump.Status.Zone1FlowTemperatureSetpoint -= 0.5;
+      } else if (Flow_Inc_Count > 0 && exc < 0.5f) {  // Flow Temp reducer if within 0.5C, only once it has held there
+        if (!FF_LowerArmed) {
+          FF_LowerArmed = true;
+          FF_LowerArmedMs = millis();
+        }
+        if (millis() - FF_LowerArmedMs >= FF_LOWER_PERSIST_MS) {
+          HeatPump.SetFlowSetpoint(fsp - dir * 0.5f, HeatPump.Status.HeatingControlModeZ1, ZONE1);
+          HeatPump.Status.Zone1FlowTemperatureSetpoint -= dir * 0.5f;
           write_thermostats();
-          Flow_Inc_Count++;  // This will be cancelled at the next compressor stop
+          Flow_Inc_Count--;
+          if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
+          FF_LowerArmed = false;
         }
-        if (HeatPump.Status.Zone1FlowTemperatureSetpoint < Z1_CurveFSP) {  // Cancel Flow Following if FSP exceeds Comp Curve Target
-          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
-          FlowFollowingActive = false;
-        }
-      } else if ((Flow_Inc_Count > 0) && (HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > -0.5)) {  // Flow Temp reducer if within 0.5C
-        HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint + 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);             // Need to avoid overwriting by onboard weather curve..
-        HeatPump.Status.Zone1FlowTemperatureSetpoint += 0.5;
-        write_thermostats();
-        Flow_Inc_Count--;                                          // This will be cancelled at the next compressor stop
-        if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
+      } else {
+        FF_LowerArmed = false;
       }
+    } else {
+      FF_RaiseArmed = FF_LowerArmed = false;
     }
     FlowTemp_Last = HeatPump.Status.HeaterOutputFlowTemperature;  // Last Loop Flow Temperature
+  } else {
+    FF_RaiseArmed = FF_LowerArmed = false;
   }
 
   // -- Exit Onboard Compensation Curve if System Operation Modes Change -- //
