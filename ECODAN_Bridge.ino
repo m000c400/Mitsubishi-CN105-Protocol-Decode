@@ -216,6 +216,10 @@ bool inDefrostWindow = false;
 bool A2APrevConnectedLastLoop = false;
 bool A2WPrevConnectedLastLoop = false;
 int Connection_attempt_counter = 0;
+const uint32_t HP_RECONNECT_GRACE_MS = 30000;     // Silence required before the link counts as lost (Connected is briefly false at each 30s trigger / after writes)
+const uint32_t HP_RECONNECT_INTERVAL_MS = 10000;  // Gap between recovery attempts
+uint32_t HP_LinkLostMs = 0;
+uint32_t HP_ReconnectLastMs = 0;
 bool Reset_Button_pressed_at_boot = false;
 
 #ifdef ESP32  // Define the M5Stack AtomS3
@@ -377,6 +381,7 @@ void WriteStateEngine(void);
 void MELCloudQueryReplyEngine(void);
 void HeatPumpQuerySVCEngine(void);
 void TriggerStateMachines(void);
+void HandleReconnection(void);
 void Zone1Report(void);
 void Zone2Report(void);
 void HotWaterReport(void);
@@ -600,10 +605,17 @@ void loop() {
   HeatPumpQuery9.Process();
 
   // -- Heat Pump Connection Handler -- //
-  if (!HeatPump.HeatPumpConnected() && !AC.HeatPumpConnected() && !HeatPump.PrevConnected && !AC.PrevConnected) {
-    HandleConnectionAttempts();
-  } else {
+  const bool HPLinkUp = HeatPump.HeatPumpConnected() || AC.HeatPumpConnected();
+  const bool HPTypeKnown = HeatPump.PrevConnected || AC.PrevConnected;  // A2W or A2A seen at least once since boot
+
+  if (HPLinkUp) {
     Connection_attempt_counter = 0;  // Reset the counter
+    HP_LinkLostMs = 0;
+  } else if (!HPTypeKnown) {
+    HandleConnectionAttempts();  // Never connected yet: probe A2W/A2A (and cable/proxy)
+  } else {
+    if (HP_LinkLostMs == 0) { HP_LinkLostMs = millis(); }  // Was up before, start timing the silence
+    if (millis() - HP_LinkLostMs >= HP_RECONNECT_GRACE_MS) { HandleReconnection(); }
   }
 
   MELCloudQueryReplyEngine();
@@ -1134,6 +1146,41 @@ void HandleConnectionAttempts(void) {
 }
 
 
+// Recovery for a link that was up before (A2W or A2A type already known) and has since gone silent.
+// Retries only the known type, forces a Disconnect() after 20 failed attempts, then starts a new round.
+void HandleReconnection(void) {
+  if (millis() - HP_ReconnectLastMs < HP_RECONNECT_INTERVAL_MS) { return; }
+  HP_ReconnectLastMs = millis();
+
+  if (Connection_attempt_counter > 20) {  // Request/Attempt disconnect if no reply
+    DEBUG_PRINTLN(F("No reply after 20+ attempts, forcing disconnect first..."));
+    if (HeatPump.PrevConnected) { HeatPump.Disconnect(); } else { AC.Disconnect(); }
+    Connection_attempt_counter = 0;  // Start the next round of 20
+  }
+
+  if (HeatPump.PrevConnected) { HeatPump.Connect(); } else { AC.Connect(); }
+  Connection_attempt_counter++;
+
+  if (HeatPump.HeatPumpConnected() || AC.HeatPumpConnected()) {
+    // The link answered. Leave Connected set so loop() sees it (resets the counter) - the normal 30s timer restarts the reads.
+    HeatPump.PauseStateMachine = false;  // Disconnect()/StopStateMachine() can leave reads paused
+    AC.PauseStateMachine = false;
+
+    // Show what can still block the reads (HeatPumpQueryStateEngine only reads when cmd_queue_length == 0)
+    DEBUG_PRINT(F("Reconnected. Read gates -> cmd_queue_length: "));
+    DEBUG_PRINT(cmd_queue_length);
+    DEBUG_PRINT(F(", WriteInProgress: "));
+    DEBUG_PRINT(WriteInProgress);
+    DEBUG_PRINT(F(", HasAnsweredDips: "));
+    DEBUG_PRINT(HeatPump.Status.HasAnsweredDips);
+    DEBUG_PRINT(F(", A2W PrevConnected: "));
+    DEBUG_PRINT(HeatPump.PrevConnected);
+    DEBUG_PRINT(F(", A2A PrevConnected: "));
+    DEBUG_PRINTLN(AC.PrevConnected);
+  }
+}
+
+
 void TriggerStateMachines(void) {
   ftcpreviousMillis = millis();
   if (AC.HeatPumpConnected()) {
@@ -1172,7 +1219,9 @@ void HeatPumpQueryStateEngine(void) {
       PublishAllACReports();
     }
   } else if (HeatPump.PrevConnected) {
-    if (cmd_queue_length == 0) {  // If there is no commands awaiting written
+    // Reads wait for the write queue to empty, but writes are held until HasAnsweredDips is set (last message of the first read cycle).
+    // So until then a queued write must not stop the reads, otherwise the reads that would release it never complete.
+    if (cmd_queue_length == 0 || !HeatPump.Status.HasAnsweredDips) {
       //DEBUG_PRINTLN("A2W Status State Machine");
       HeatPump.StatusStateMachine();  // Full Read trigged by CurrentMessage
     }
@@ -1207,7 +1256,7 @@ void HeatPumpQuerySVCEngine(void) {
 }
 
 void WriteStateEngine(void) {
-  if (HeatPump.PrevConnected && HeatPump.Status.HasAnsweredDips) {
+  if (HeatPump.PrevConnected && HeatPump.Status.HasAnsweredDips) {  // Writes use settings recorded during the first read cycle, so wait for it
     HeatPump.WriteStateMachine();
   } else if (AC.PrevConnected) {
     AC.WriteStateMachine();
