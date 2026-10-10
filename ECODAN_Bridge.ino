@@ -17,7 +17,7 @@
 /* ESP32 AtomS3 Lite (ESP32S3 Dev Module)    / Core 3.1.1 / Flash 8M with SPIFFS (3MB APP / 1.5MB SPIFFS)                  */
 /* ESP32 Ethernet WT32-ETH01                 / Core 3.1.1 / Flash 4MB (1.9MB APP / 180KB SPIFFS)                           */
 
-#define LANG_EN
+#define LANG_FR
 
 
 #if defined(ESP8266) || defined(ESP32)
@@ -188,6 +188,8 @@ const int port_max_length = 10;
 const int user_max_length = 30;
 const int password_max_length = 50;
 const int basetopic_max_length = 30;
+const int webpass_min_length = 4;   // Web interface password (set from Home Assistant): minimum characters
+const int webpass_max_length = 33;  // 32 characters plus the terminating null
 bool ShortCycleProtectionActive = false;
 bool FlowFollowingActive = false;
 bool DHWFlowFollowingActive = false;
@@ -297,6 +299,10 @@ struct UnitSettings {
   char act_ctrl_sc_identifier[9] = "shortcyc";
   char mel_block_identifier[10] = "melblock";
   char remote_ac_identifier[10] = "ac_rmt";
+  char webpass_identifier[8] = "webpass";
+  char WebPassword[webpass_max_length] = "";  // Web interface password set from Home Assistant, empty = disabled
+  char webauth_identifier[8] = "webauth";
+  bool WebAuthEnabled = true;                 // False = login disabled (an empty password was sent from Home Assistant)
   String CompCurve = "{\"base\":{\"zone1\":{\"curve\":[{\"flow\":60,\"outside\":-10},{\"flow\":35,\"outside\":0},{\"flow\":20,\"outside\":15},{\"flow\":10,\"outside\":20}]},\"zone2\":{\"curve\":[{\"flow\":60,\"outside\":-10},{\"flow\":35,\"outside\":0},{\"flow\":20,\"outside\":15}]}},\"zone1\":{\"active\":false,\"manual_offset\":0,\"temp_offset\": 0,\"wind_offset\":0},\"zone2\":{\"active\":false,\"manual_offset\":0,\"temp_offset\": 0,\"wind_offset\":0},\"use_local_outdoor\":true,\"max_flow_overshoot\": 3,\"fixedlockoutduration\": 0}";
   float z1_manual_offset = 0;
   float z1_wind_offset = 0;
@@ -550,7 +556,7 @@ void setup() {
   initializeMQTTClient2();
   MQTTClient2.setCallback(MQTTonData);
 
-  wifiManager.setWebPortalAuth("admin", mqttSettings.deviceId, "admin/deviceID (Serial Number in Home Assistant)");
+  ApplyWebPortalAuth();  // Password from Home Assistant (config.json), otherwise the device ID, or no login if it was disabled
   wifiManager.startWebPortal();
 
   MDNS.begin("heatpump");
@@ -1257,7 +1263,11 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT(F("\nReceived MQTT Message on topic: "));
   DEBUG_PRINT(Topic.c_str());
   DEBUG_PRINT(F(" with Payload: "));
-  DEBUG_PRINTLN(Payload.c_str());
+  if ((Topic == MQTTCommandSystemWebPass) || (Topic == MQTTCommand2SystemWebPass)) {
+    DEBUG_PRINTLN(F("********"));  // Never echo the web interface password to the debug port
+  } else {
+    DEBUG_PRINTLN(Payload.c_str());
+  }
 
   // Service Codes
   if ((Topic == MQTTCommandSystemService) || (Topic == MQTTCommand2SystemService)) {
@@ -1520,6 +1530,22 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
       unitSettings.GlycolStrength = 3.9;
     }
     shouldSaveConfig = true;  // Write the data to JSON file so if device reboots it is saved
+  } else if ((Topic == MQTTCommandSystemWebPass) || (Topic == MQTTCommand2SystemWebPass)) {
+    DEBUG_PRINTLN(F("MQTT Set Web Interface Password"));
+    if (Payload.length() == 0) {  // Empty input disables the web interface login
+      DEBUG_PRINTLN(F("Web Interface Password disabled"));
+      unitSettings.WebAuthEnabled = false;
+      unitSettings.WebPassword[0] = 0;
+      ApplyWebPortalAuth();     // Takes effect on the next web request, no restart needed
+      shouldSaveConfig = true;  // Write the data to JSON file so if device reboots it is saved
+    } else if (IsValidWebPassword(Payload)) {
+      strcpy(unitSettings.WebPassword, Payload.c_str());
+      unitSettings.WebAuthEnabled = true;  // Setting a password turns the login (back) on
+      ApplyWebPortalAuth();                // Takes effect on the next web request, no restart needed
+      shouldSaveConfig = true;             // Write the data to JSON file so if device reboots it is saved
+    } else {
+      DEBUG_PRINTLN(F("Web Interface Password rejected: must be 4 to 32 printable ASCII characters"));
+    }
   } else if ((Topic == MQTTCommandSystemCompCurve) || (Topic == MQTTCommand2SystemCompCurve)) {
     MQTTWriteReceived("MQTT Set Comp Curve", 15);
     JsonDocument doc;
@@ -1911,8 +1937,13 @@ void SystemReport(void) {
 
   if (HeatPump.Status.ImmersionActive == 1 || HeatPump.Status.Booster1Active == 1 || HeatPump.Status.Booster2Active == 1) {  // Account for Immersion or Booster Instead of HP
     Non_HP_Mode = true;
-    if (EstInputPower == 0) { EstInputPower = HeatPump.Status.InputPower; }  // Uses Booster/Immersion Size in MRC
-    if (OutputPower == 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }
+    if (HeatPump.Status.CompressorFrequency == 0) {  // Heater-only running (no compressor): the estimate above is only standby draw, and an immersion is not seen by the primary loop deltaT
+      if (HeatPump.Status.InputPower > 0) { EstInputPower = HeatPump.Status.InputPower; }                            // Uses Booster/Immersion Size in MRC
+      if (HeatPump.Status.OutputPower > 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }          // Resistive heater: output follows the FTC reported heater power
+    } else {                                                                                                         // Compressor running with Booster assist (unchanged behaviour)
+      if (EstInputPower == 0) { EstInputPower = HeatPump.Status.InputPower; }                                        // Uses Booster/Immersion Size in MRC
+      if (OutputPower == 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }
+    }
   }
 
   if (HeatPump.Status.SystemOperationMode > 0 || HeatPump.Status.CompressorFrequency > 0) {  // Pump Operating
@@ -1956,8 +1987,23 @@ void SystemReport(void) {
 
 
   // Instant CoP measurement from computed estimates
-  if (fabsf(OutputPower) > 0 && EstInputPower > 0) {
-    Instant_CoP = fabsf(OutputPower) / EstInputPower;
+  // Signed: useful heat delivered to the water (+) over estimated electrical input. A negative flow-return deltaT while
+  // heating/DHW/defrosting means heat is being taken from the water, so the CoP is reported negative rather than being
+  // folded into a large positive value. For genuine cooling the useful output is the heat removed, so it is flipped to read as a positive EER.
+  // Only evaluated while the compressor is running, or while an immersion/booster is running on its own (CoP of about 1): with the
+  // compressor off and no heater, the input estimate is just standby draw (~15 W scaled) and any residual flow/deltaT would otherwise
+  // divide into a CoP of hundreds. The result is also bounded to a plausible range.
+  const float CoP_Min_Input_kW = 0.05f;  // Below this the estimate is not trustworthy as a denominator
+  const float CoP_Limit = 15.0f;         // Bound for transient spikes (e.g. compressor ramp-up, valve changeover, sensor lag)
+  if ((HeatPump.Status.CompressorFrequency > 0 || Non_HP_Mode) && EstInputPower >= CoP_Min_Input_kW) {
+    bool CoolingMode = (HeatPump.Status.HeatCool == 1 && !DHW_Mode && HeatPump.Status.Defrost == 0 && !Non_HP_Mode);  // Genuine space cooling (not defrost, DHW or heater)
+    float CoP_Output = CoolingMode ? -OutputPower : OutputPower;                                      // Cooling: heat removed from the loop is the useful output
+    Instant_CoP = CoP_Output / EstInputPower;
+    if (Instant_CoP > CoP_Limit) {
+      Instant_CoP = CoP_Limit;
+    } else if (Instant_CoP < -CoP_Limit) {
+      Instant_CoP = -CoP_Limit;
+    }
   } else {
     Instant_CoP = 0;
   }
@@ -2335,6 +2381,7 @@ void StatusReport(void) {
   } else if (round2(unitSettings.GlycolStrength) == 3.9) {
     doc[F("Glycol")] = "30%";
   }
+  doc[F("WebPassword")] = unitSettings.WebAuthEnabled ? "********" : "disabled";  // Placeholder for the Home Assistant entity - the stored password is never published
   doc[F("HB_ID")] = Heart_Value;
 
   serializeJson(doc, Buffer);

@@ -1,9 +1,9 @@
 //-- MQTT Home Assistant Auto Discovery --//
 
-const int discovery_topics PROGMEM = 128;
+const int discovery_topics PROGMEM = 129;
 
 // Build the sensor JSON structure
-const char MQTT_DISCOVERY_OBJ_ID[][3] PROGMEM = { "aa", "ab", "ac", "ad", "ae", "af", "ag", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "au", "av", "aw", "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl", "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca", "cb", "cc", "cd", "cu", "cv", "cw", "cx", "cz", "da", "db", "dc", "de", "df", "dg", "dh", "di", "dj", "dk", "dl", "dm", "dn", "do", "dp", "dq", "ds", "dt", "dx", "dz", "ea", "eb", "ec", "ed", "ee", "ef", "eg", "eh", "ei", "ej", "ek", "el", "em", "en", "eo", "ep", "eq", "er", "et", "eu", "ev", "ew", "ex", "ey", "ez", "fa", "ce", "cf", "cg", "dw", "du", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp", "dr", "es", "cs", "fa", "ct", "dv", "dx", "dy", "es" };
+const char MQTT_DISCOVERY_OBJ_ID[][3] PROGMEM = { "aa", "ab", "ac", "ad", "ae", "af", "ag", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "au", "av", "aw", "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bk", "bl", "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz", "ca", "cb", "cc", "cd", "cu", "cv", "cw", "cx", "cz", "da", "db", "dc", "de", "df", "dg", "dh", "di", "dj", "dk", "dl", "dm", "dn", "do", "dp", "dq", "ds", "dt", "dx", "dz", "ea", "eb", "ec", "ed", "ee", "ef", "eg", "eh", "ei", "ej", "ek", "el", "em", "en", "eo", "ep", "eq", "er", "et", "eu", "ev", "ew", "ex", "ey", "ez", "fa", "ce", "cf", "cg", "dw", "du", "ch", "ci", "cj", "ck", "cl", "cm", "cn", "co", "cp", "dr", "es", "cs", "fa", "ct", "dv", "dx", "dy", "es", "fb" };
 
 const char MQTT_SENSOR_UNIQUE_ID[][32] PROGMEM = {
   "ashp_bridge_lwt_",
@@ -136,7 +136,8 @@ const char MQTT_SENSOR_UNIQUE_ID[][32] PROGMEM = {
   "ashp_heat_cool_mode_z2",
   "ashp_unit_size_",
   "ashp_glycol_",
-  "ashp_bridge_fmwre_upd_"
+  "ashp_bridge_fmwre_upd_",
+  "ashp_web_password_"
 };
 
 
@@ -144,7 +145,7 @@ const char MQTT_MDI_ICONS_AC[][30] PROGMEM = {
   "mdi:cloud-check-variant",
   "mdi:alpha-v-box",
   "mdi:signal-variant",
-  "mdi:sine-wave",  
+  "mdi:sine-wave",
   "mdi:rotate-3d",
   "mdi:timer-cog-outline",
   "mdi:timer-cog-outline",
@@ -432,7 +433,8 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Heiz-/Kühlbetriebsart Zone 2",  // Heating/Cooling Operation Mode Zone 2
   "Leistung Außengerät (kW)",      // Outdoor Unit Size (kW)
   "Glykolkonzentration",           // Glycol Strength
-  "Firmware-Update"                // Firmware Update
+  "Firmware-Update",               // Firmware Update
+  "Webinterface-Passwort"          // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -465,7 +467,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Systemleistung",
   "Firmware-Update"
   "Externe Temperatur",
-  "Externen Sensor nutzen"
+  "Externen Sensor nutzen",
+  "Webinterface-Passwort"
 };
 
 
@@ -602,7 +605,8 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Lämmitys-/jäähdytystila Vyöhyke 2",  // Heating/Cooling Operation Mode Zone 2
   "Ulkoyksikön koko (kW)",              // Outdoor Unit Size (kW)
   "Glykolipitoisuus",                   // Glycol Strength
-  "Laiteohjelmiston päivitys"           // Firmware Update
+  "Laiteohjelmiston päivitys",          // Firmware Update
+  "Verkkokäyttöliittymän salasana"      // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -635,13 +639,14 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Järjestelmän teho",
   "Laiteohjelmiston päivitys",
   "Ulkoinen lämpötila",
-  "Käytä etäanturia"
+  "Käytä etäanturia",
+  "Verkkokäyttöliittymän salasana"
 };
 
 // Swedish
 #elif defined(LANG_SE)
 const char MQTT_SENSOR_NAME[][65] PROGMEM = {
-  "Bryggstatus",                              // Bridge Status
+  "Bryggstatus",                             // Bridge Status
   "Firmware-version",                        // Firmware Version
   "Bryggans WiFi-signal",                    // Bridge WiFi Signal
   "FTC-version",                             // FTC Version
@@ -747,38 +752,39 @@ const char MQTT_SENSOR_NAME[][65] PROGMEM = {
   "Total-COP idag",                          // Total CoP Today
   "Tillsatsvärmare 2 Steg 2",
 
-  "VV-termostat",                            // DHW Thermostat
-  "Zon 1 termostat",                         // Zone 1 Thermostat //80
-  "Zon 2 termostat",                         // Zone 2 Thermostat
-  "Zon 1 flödestermostat",                   // Zone 1 Flow Thermostat
-  "Zon 2 flödestermostat",                   // Zone 2 Flow Thermostat
+  "VV-termostat",           // DHW Thermostat
+  "Zon 1 termostat",        // Zone 1 Thermostat //80
+  "Zon 2 termostat",        // Zone 2 Thermostat
+  "Zon 1 flödestermostat",  // Zone 1 Flow Thermostat
+  "Zon 2 flödestermostat",  // Zone 2 Flow Thermostat
 
-  "Snabb VV-boost",                          // Fast DHW Boost
-  "Systemström",                             // System Power //85
-  "Semesterläge",                            // Holiday Mode
-  "Serverstyrläge",                          // Server Control Mode
-  "Spärra VV",                               // Prohibit DHW
-  "Spärra värme Zon 1",                      // Prohibit Zone 1 Heating
-  "Spärra kyla Zon 1",                       // Prohibit Zone 1 Cooling //90
-  "Spärra värme Zon 2",                      // Prohibit Zone 2 Heating
-  "Spärra kyla Zon 2",                       // Prohibit Zone 2 Cooling
-  "VV-boost",                                // DHW Boost
-  "Kortcyklingsskydd",                       // Short Cycle Protection
-  "MELCloud Skrivskyddad",                   // MELCloud Read Only
+  "Snabb VV-boost",         // Fast DHW Boost
+  "Systemström",            // System Power //85
+  "Semesterläge",           // Holiday Mode
+  "Serverstyrläge",         // Server Control Mode
+  "Spärra VV",              // Prohibit DHW
+  "Spärra värme Zon 1",     // Prohibit Zone 1 Heating
+  "Spärra kyla Zon 1",      // Prohibit Zone 1 Cooling //90
+  "Spärra värme Zon 2",     // Prohibit Zone 2 Heating
+  "Spärra kyla Zon 2",      // Prohibit Zone 2 Cooling
+  "VV-boost",               // DHW Boost
+  "Kortcyklingsskydd",      // Short Cycle Protection
+  "MELCloud Skrivskyddad",  // MELCloud Read Only
 
-  "VV-läge",                                 // DHW Mode
-  "Driftläge Värme/Kyla Zon 1",              // Heating/Cooling Operation Mode Zone 1 //95
-  "Driftläge Värme/Kyla Zon 2",              // Heating/Cooling Operation Mode Zone 2
-  "Utomhusenhet storlek (kW)",               // Outdoor Unit Size (kW)
-  "Glykolhalt",                              // Glycol Strength
-  "Firmware-uppdatering"                     // Firmware Update
+  "VV-läge",                       // DHW Mode
+  "Driftläge Värme/Kyla Zon 1",    // Heating/Cooling Operation Mode Zone 1 //95
+  "Driftläge Värme/Kyla Zon 2",    // Heating/Cooling Operation Mode Zone 2
+  "Utomhusenhet storlek (kW)",     // Outdoor Unit Size (kW)
+  "Glykolhalt",                    // Glycol Strength
+  "Firmware-uppdatering",          // Firmware Update
+  "Lösenord för webbgränssnittet"  // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Bryggstatus",
   "Firmware-version",
   "Bryggans Wi-Fi-signal",
-  "Kompressorfrekvens",                      // 10
+  "Kompressorfrekvens",  // 10
   "iSee",
   "Timerläge",
   "Inställda minuter (På)",
@@ -804,7 +810,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Systemeffekt",
   "Firmware-uppdatering",
   "Extern rumstemperatur",
-  "Använd extern givare"
+  "Använd extern givare",
+  "Lösenord för webbgränssnittet"
 };
 
 // Italian
@@ -940,7 +947,8 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Modo Riscald/Raffredd Zona 2",
   "Taglia Unità Esterna (kW)",
   "Percentuale Glicole",
-  "Aggiornamento Firmware"
+  "Aggiornamento Firmware",
+  "Password interfaccia web"  // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -973,7 +981,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Potenza di Sistema",
   "Aggiornamento Firmware",
   "Temperatura remota",
-  "Usa sensore remoto"
+  "Usa sensore remoto",
+  "Password interfaccia web"
 };
 
 // Spanish
@@ -1109,7 +1118,8 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Modo Frío/Calor Zona 2",
   "Potencia Unidad Ext. (kW)",
   "Concentración Glicol",
-  "Actualización de Firmware"
+  "Actualización de Firmware",
+  "Contraseña de la interfaz web"  // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -1142,7 +1152,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Potencia del Sistema",
   "Actualización de Firmware",
   "Temperatura remota",
-  "Usar sensor remoto"
+  "Usar sensor remoto",
+  "Contraseña de la interfaz web"
 };
 
 
@@ -1279,7 +1290,8 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Heating/Cooling Operation Mode Zone 2",
   "Outdoor Unit Size (kW)",
   "Glycol Strength",
-  "Firmware Update"
+  "Firmware Update",
+  "Web Interface Password"  // Web Interface Password
 };
 
 
@@ -1314,12 +1326,14 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "System Power",
   "Firmware Update",
   "Remote Room Temperature",
-  "Use Remote Temperature"
+  "Use Remote Temperature",
+  "Web Interface Password"
 };
 
 // Polish
 #elif defined(LANG_PL)
-const char MQTT_SENSOR_NAME[][60] PROGMEM = { // Recommended to increase [45] to [60]
+const char MQTT_SENSOR_NAME[][60] PROGMEM = {
+  // Recommended to increase [45] to [60]
   "Status mostka",
   "Wersja oprogramowania",
   "Sygnal WiFi mostka",
@@ -1450,11 +1464,12 @@ const char MQTT_SENSOR_NAME[][60] PROGMEM = { // Recommended to increase [45] to
   "Tryb pracy grzanie/chlodzenie Strefa 2",
   "Moc jednostki zewnetrznej (kW)",
   "Stezenie glikolu",
-  "Aktualizacja oprogramowania"
+  "Aktualizacja oprogramowania",
+  "Haslo interfejsu WWW"  // Web Interface Password
 };
 
 
-const char MQTT_AC_SENSOR_NAME[][60] PROGMEM = { // Recommended to increase [45] to [60]
+const char MQTT_AC_SENSOR_NAME[][60] PROGMEM = {  // Recommended to increase [45] to [60]
   "Status mostka",
   "Wersja oprogramowania",
   "Sygnal WiFi mostka",
@@ -1485,7 +1500,8 @@ const char MQTT_AC_SENSOR_NAME[][60] PROGMEM = { // Recommended to increase [45]
   "Zasilanie systemu",
   "Aktualizacja oprogramowania",
   "Zdalna temperatura pokojowa",
-  "Uzyj zdalnego czujnika temperatury"
+  "Uzyj zdalnego czujnika temperatury",
+  "Haslo interfejsu WWW"
 };
 
 // French
@@ -1621,7 +1637,8 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Mode fonct. chaud/froid Zone 2",
   "Puissance unité ext (kW)",
   "Taux de glycol",
-  "Mise à jour du firmware"
+  "Mise à jour du firmware",
+  "Mot de passe de l'interface web"  // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -1654,7 +1671,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Puissance Système",
   "Mise à Jour Firmware",
   "Température capteur distant",
-  "Utiliser le capteur distant"
+  "Utiliser le capteur distant",
+  "Mot de passe de l'interface web"
 };
 
 
@@ -1791,7 +1809,8 @@ const char MQTT_SENSOR_NAME[][45] PROGMEM = {
   "Bedrijfsmodus Verw/Koel Zone 2",
   "Buitenunit Vermogen (kW)",
   "Glycol Concentratie",
-  "Firmware Update"
+  "Firmware Update",
+  "Wachtwoord webinterface"  // Web Interface Password
 };
 
 const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
@@ -1824,7 +1843,8 @@ const char MQTT_AC_SENSOR_NAME[][45] PROGMEM = {
   "Systeemvermogen",
   "Firmware-update",
   "Externe temperatuur",
-  "Externe sensor gebruiken"
+  "Externe sensor gebruiken",
+  "Wachtwoord webinterface"
 };
 
 #endif
@@ -1867,6 +1887,7 @@ const char MQTT_TOPIC[][34] PROGMEM = {
   "/Command/System/Glycol",             //32
   "/Command/System/Svc",                //33
   "/Status/WiFiStatus/Update",          //34
+  "/Command/System/WebPassword"         //35
 };
 
 
@@ -2368,7 +2389,8 @@ const char MQTT_DISCOVERY_TOPICS[][23] PROGMEM = {
   "homeassistant/select/",
   "/config",
   "homeassistant/update/",
-  "homeassistant/number/"
+  "homeassistant/number/",
+  "homeassistant/text/"
 };
 
 const char MQTT_DEVICE_CLASS[][17] PROGMEM = {  // Uses same structure as Units - but blank when no match

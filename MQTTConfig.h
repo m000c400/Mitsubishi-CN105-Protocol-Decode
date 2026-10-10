@@ -51,6 +51,7 @@ String MQTT_COMMAND_SYSTEM_GLYCOL = MQTT_COMMAND_SYSTEM + "/Glycol";
 String MQTT_COMMAND_SYSTEM_SERVICE = MQTT_COMMAND_SYSTEM + "/Svc";
 String MQTT_COMMAND_SYSTEM_COMPCURVE = MQTT_COMMAND_SYSTEM + "/CompCurve";
 String MQTT_COMMAND_SYSTEM_ACTV_CTRL = MQTT_COMMAND_SYSTEM + "/ActiveControl";
+String MQTT_COMMAND_SYSTEM_WEBPASS = MQTT_COMMAND_SYSTEM + "/WebPassword";
 
 String MQTTCommandZone1FlowSetpoint = MQTT_COMMAND_ZONE1_FLOW_SETPOINT;
 String MQTTCommandZone1NoModeSetpoint = MQTT_COMMAND_ZONE1_NOMODE_SETPOINT;
@@ -78,6 +79,7 @@ String MQTTCommandSystemGlycol = MQTT_COMMAND_SYSTEM_GLYCOL;
 String MQTTCommandSystemService = MQTT_COMMAND_SYSTEM_SERVICE;
 String MQTTCommandSystemCompCurve = MQTT_COMMAND_SYSTEM_COMPCURVE;
 String MQTTCommandSystemActvCtrl = MQTT_COMMAND_SYSTEM_ACTV_CTRL;
+String MQTTCommandSystemWebPass = MQTT_COMMAND_SYSTEM_WEBPASS;
 String MQTTCommandAC = MQTT_COMMAND_AC;
 
 
@@ -134,6 +136,7 @@ String MQTT_2_COMMAND_SYSTEM_GLYCOL = MQTT_2_COMMAND_SYSTEM + "/Glycol";
 String MQTT_2_COMMAND_SYSTEM_SERVICE = MQTT_2_COMMAND_SYSTEM + "/Svc";
 String MQTT_2_COMMAND_SYSTEM_COMPCURVE = MQTT_2_COMMAND_SYSTEM + "/CompCurve";
 String MQTT_2_COMMAND_SYSTEM_ACTV_CTRL = MQTT_2_COMMAND_SYSTEM + "/ActiveControl";
+String MQTT_2_COMMAND_SYSTEM_WEBPASS = MQTT_2_COMMAND_SYSTEM + "/WebPassword";
 
 String MQTTCommand2Zone1FlowSetpoint = MQTT_2_COMMAND_ZONE1_FLOW_SETPOINT;
 String MQTTCommand2Zone1NoModeSetpoint = MQTT_2_COMMAND_ZONE1_NOMODE_SETPOINT;
@@ -161,6 +164,7 @@ String MQTTCommand2SystemGlycol = MQTT_2_COMMAND_SYSTEM_GLYCOL;
 String MQTTCommand2SystemService = MQTT_2_COMMAND_SYSTEM_SERVICE;
 String MQTTCommand2SystemCompCurve = MQTT_2_COMMAND_SYSTEM_COMPCURVE;
 String MQTTCommand2SystemActvCtrl = MQTT_2_COMMAND_SYSTEM_ACTV_CTRL;
+String MQTTCommand2SystemWebPass = MQTT_2_COMMAND_SYSTEM_WEBPASS;
 String MQTTCommand2AC = MQTT_2_COMMAND_AC;
 
 
@@ -175,6 +179,17 @@ char MQTTIDs[40] = "";
 
 
 // Programs
+
+// Web interface password rules: 4 to 32 printable ASCII characters (also enforced by the Home Assistant entity)
+bool IsValidWebPassword(const String& pass) {
+  int len = (int)pass.length();
+  if (len < webpass_min_length || len > (webpass_max_length - 1)) { return false; }
+  for (int k = 0; k < len; k++) {
+    char c = pass[k];
+    if (c < 32 || c > 126) { return false; }  // Printable ASCII only (bytes >127 are negative as char)
+  }
+  return true;
+}
 
 #if defined(ESP8266) || defined(ESP32)  // ESP32 or ESP8266 Compatiability
 void readSettingsFromConfig() {
@@ -202,6 +217,21 @@ void readSettingsFromConfig() {
             DEBUG_PRINT(F("Failed to read file: "));
             DEBUG_PRINTLN(error.c_str());
           } else {
+            // Web interface password: load it first, then mask it so it is not echoed to the debug port
+            if (doc.containsKey(unitSettings.webpass_identifier)) {
+              const char* storedWebPass = doc[unitSettings.webpass_identifier];
+              if (storedWebPass != nullptr && IsValidWebPassword(String(storedWebPass))) {
+                strcpy(unitSettings.WebPassword, storedWebPass);
+              }
+              doc[unitSettings.webpass_identifier] = "********";
+            } else {                    // For upgrading from earlier firmware, create the entry
+              shouldSaveConfig = true;  // Save config after exit to update the file
+            }
+            if (doc.containsKey(unitSettings.webauth_identifier)) {
+              unitSettings.WebAuthEnabled = doc[unitSettings.webauth_identifier].as<bool>();
+            } else {                    // For upgrading from earlier firmware, create the entry (login stays enabled)
+              shouldSaveConfig = true;  // Save config after exit to update the file
+            }
             DEBUG_PRINTLN(F("Parsed JSON: "));
             serializeJson(doc, DEBUGPORT);
             DEBUG_PRINTLN();
@@ -421,6 +451,7 @@ void readSettingsFromConfig() {
     MQTT_COMMAND_SYSTEM_SERVICE = MQTT_COMMAND_SYSTEM + "/Svc";
     MQTT_COMMAND_SYSTEM_COMPCURVE = MQTT_COMMAND_SYSTEM + "/CompCurve";
     MQTT_COMMAND_SYSTEM_ACTV_CTRL = MQTT_COMMAND_SYSTEM + "/ActiveControl";
+    MQTT_COMMAND_SYSTEM_WEBPASS = MQTT_COMMAND_SYSTEM + "/WebPassword";
 
     MQTTCommandZone1FlowSetpoint = MQTT_COMMAND_ZONE1_FLOW_SETPOINT;
     MQTTCommandZone1NoModeSetpoint = MQTT_COMMAND_ZONE1_NOMODE_SETPOINT;
@@ -448,9 +479,21 @@ void readSettingsFromConfig() {
     MQTTCommandSystemService = MQTT_COMMAND_SYSTEM_SERVICE;
     MQTTCommandSystemCompCurve = MQTT_COMMAND_SYSTEM_COMPCURVE;
     MQTTCommandSystemActvCtrl = MQTT_COMMAND_SYSTEM_ACTV_CTRL;
+    MQTTCommandSystemWebPass = MQTT_COMMAND_SYSTEM_WEBPASS;
     MQTTCommandAC = MQTT_COMMAND_AC;
   }
 
+
+  // Web interface login: disabled (empty password = no login), the password set from Home Assistant, otherwise the device ID (Serial Number in Home Assistant)
+  void ApplyWebPortalAuth() {
+    if (!unitSettings.WebAuthEnabled) {
+      wifiManager.setWebPortalAuth("admin", "", "");
+    } else if (strlen(unitSettings.WebPassword) > 0) {
+      wifiManager.setWebPortalAuth("admin", unitSettings.WebPassword, "admin/Web Interface Password (set in Home Assistant)");
+    } else {
+      wifiManager.setWebPortalAuth("admin", mqttSettings.deviceId, "admin/deviceID (Serial Number in Home Assistant)");
+    }
+  }
 
   void saveConfig() {
     // Read MQTT Portal Values for save to file system
@@ -490,11 +533,14 @@ void readSettingsFromConfig() {
       doc[unitSettings.act_ctrl_sc_identifier] = unitSettings.shortcycleprotectionenabled;
       doc[unitSettings.mel_block_identifier] = unitSettings.BlockWriteFromMELCloud;
       doc[unitSettings.remote_ac_identifier] = unitSettings.RemoteTempOn;
+      doc[unitSettings.webpass_identifier] = unitSettings.WebPassword;
+      doc[unitSettings.webauth_identifier] = unitSettings.WebAuthEnabled;
 
       if (serializeJson(doc, configFile) == 0) {
         DEBUG_PRINTLN(F("[FAILED]"));
       } else {
         DEBUG_PRINTLN(F("[DONE]"));
+        doc[unitSettings.webpass_identifier] = "********";  // Do not echo the web interface password to the debug port
         serializeJson(doc, DEBUGPORT);
         DEBUG_PRINTLN();
 #ifndef ARDUINO_WT32_ETH01
@@ -615,6 +661,20 @@ void readSettingsFromConfig() {
   }
 
 
+
+  // Home Assistant text entity (password mode) for setting the web interface password, shared by A2W and A2A.
+  // The state shown in Home Assistant is a placeholder from StatusReport ("********", or "disabled") - the stored password is never published.
+  void BuildWebPasswordEntity(JsonDocument& Config, const String& BASETOPIC) {
+    Config["cmd_t"] = BASETOPIC + String(MQTT_TOPIC[35]);
+    Config["stat_t"] = BASETOPIC + String(MQTT_TOPIC[1]);
+    Config["val_tpl"] = "{{ value_json.WebPassword }}";
+    Config["mode"] = "password";
+    Config["min"] = 0;  // An empty entry disables the web interface login
+    Config["max"] = webpass_max_length - 1;
+    Config["pattern"] = String("^([ -~]{") + webpass_min_length + "," + (webpass_max_length - 1) + "})?$";  // Empty, or printable ASCII matching IsValidWebPassword()
+    Config["ent_cat"] = "config";
+    Config["icon"] = "mdi:form-textbox-password";
+  }
 
   void PublishDiscoveryTopics(uint8_t MQTTStream, String BASETOPIC) {
 
@@ -807,6 +867,12 @@ void readSettingsFromConfig() {
       }
 #endif
 
+      // Text (Web Interface Password)
+      if (i == 128) {
+        BuildWebPasswordEntity(Config, BASETOPIC);
+        MQTT_DISCOVERY_TOPIC = String(MQTT_DISCOVERY_TOPICS[8]);
+      }
+
       // Add Availability Topics
       if (i >= 106) {
         if (i >= 114 && i < 119) {  // Server Control Mode Interlocks
@@ -870,7 +936,7 @@ void readSettingsFromConfig() {
     JsonDocument Config;
 
     // Publish all the discovery topics
-    for (int i = 0; i < 29; i++) {
+    for (int i = 0; i < 30; i++) {
 
       if (i == 0) {  // If the first topic
         Config["dev"]["ids"] = MQTTIDs;
@@ -1049,6 +1115,11 @@ void readSettingsFromConfig() {
         MQTT_DISCOVERY_TOPIC = String(MQTT_DISCOVERY_TOPICS[7]);
       }
 
+      // Text (Web Interface Password)
+      if (i == 29) {
+        BuildWebPasswordEntity(Config, BASETOPIC);
+        MQTT_DISCOVERY_TOPIC = String(MQTT_DISCOVERY_TOPICS[8]);
+      }
 
 #ifdef ESP32
       // Update
@@ -1133,6 +1204,7 @@ void readSettingsFromConfig() {
     MQTTClient1.subscribe(MQTTCommandSystemService.c_str());
     MQTTClient1.subscribe(MQTTCommandSystemCompCurve.c_str());
     MQTTClient1.subscribe(MQTTCommandSystemActvCtrl.c_str());
+    MQTTClient1.subscribe(MQTTCommandSystemWebPass.c_str());
     MQTTClient1.subscribe(MQTTCommandAC.c_str());
 
     delay(10);
@@ -1298,6 +1370,7 @@ void readSettingsFromConfig() {
     MQTT_2_COMMAND_SYSTEM_SERVICE = MQTT_2_COMMAND_SYSTEM + "/Svc";
     MQTT_2_COMMAND_SYSTEM_COMPCURVE = MQTT_2_COMMAND_SYSTEM + "/CompCurve";
     MQTT_2_COMMAND_SYSTEM_ACTV_CTRL = MQTT_2_COMMAND_SYSTEM + "/ActiveControl";
+    MQTT_2_COMMAND_SYSTEM_WEBPASS = MQTT_2_COMMAND_SYSTEM + "/WebPassword";
 
     MQTTCommand2Zone1FlowSetpoint = MQTT_2_COMMAND_ZONE1_FLOW_SETPOINT;
     MQTTCommand2Zone1NoModeSetpoint = MQTT_2_COMMAND_ZONE1_NOMODE_SETPOINT;
@@ -1325,6 +1398,7 @@ void readSettingsFromConfig() {
     MQTTCommand2SystemService = MQTT_2_COMMAND_SYSTEM_SERVICE;
     MQTTCommand2SystemCompCurve = MQTT_2_COMMAND_SYSTEM_COMPCURVE;
     MQTTCommand2SystemActvCtrl = MQTT_2_COMMAND_SYSTEM_ACTV_CTRL;
+    MQTTCommand2SystemWebPass = MQTT_2_COMMAND_SYSTEM_WEBPASS;
     MQTTCommand2AC = MQTT_2_COMMAND_AC;
   }
 
@@ -1370,6 +1444,7 @@ void readSettingsFromConfig() {
     MQTTClient2.subscribe(MQTTCommand2SystemService.c_str());
     MQTTClient2.subscribe(MQTTCommand2SystemCompCurve.c_str());
     MQTTClient2.subscribe(MQTTCommand2SystemActvCtrl.c_str());
+    MQTTClient2.subscribe(MQTTCommand2SystemWebPass.c_str());
     MQTTClient2.subscribe(MQTTCommand2AC.c_str());
     delay(10);
 
