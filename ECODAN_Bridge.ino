@@ -17,7 +17,7 @@
 /* ESP32 AtomS3 Lite (ESP32S3 Dev Module)    / Core 3.1.1 / Flash 8M with SPIFFS (3MB APP / 1.5MB SPIFFS)                  */
 /* ESP32 Ethernet WT32-ETH01                 / Core 3.1.1 / Flash 4MB (1.9MB APP / 180KB SPIFFS)                           */
 
-#define LANG_FR
+#define LANG_EN
 
 
 #if defined(ESP8266) || defined(ESP32)
@@ -199,12 +199,6 @@ float Z2_CurveFSP = 30;
 float FlowTemp_Last = 0;
 float FlowTemp_Target = 0;
 int Flow_Inc_Count = 0;
-// Flow-following persistence gate (see Flow Temperature Overshoot Hysterisis in loop())
-const uint32_t FF_RAISE_PERSIST_MS = 60000;   // Reading must hold above the trigger this long before the setpoint is raised
-const uint32_t FF_LOWER_PERSIST_MS = 120000;  // Reading must hold below the release level this long before the setpoint is lowered
-const float FF_FASTPATH_EXC = 1.5;            // At or above this excess (C) skip the gate: too close to the 2.0C outdoor unit stop
-bool FF_RaiseArmed = false, FF_LowerArmed = false;
-uint32_t FF_RaiseArmedMs = 0, FF_LowerArmedMs = 0;
 int lastResetDay = -1;
 const int OAT_Window_Size = 300;
 int OAT_readings[OAT_Window_Size];
@@ -221,6 +215,10 @@ const uint32_t HP_RECONNECT_INTERVAL_MS = 10000;  // Gap between recovery attemp
 uint32_t HP_LinkLostMs = 0;
 uint32_t HP_ReconnectLastMs = 0;
 bool Reset_Button_pressed_at_boot = false;
+bool SCMRestorePending = false;          // Saved Server Control Mode still to be restored this boot (needs MQTT connected)
+bool ButtonRebootPending = false;        // Button exit requested, waiting for the heat pump write + config save before rebooting
+bool ButtonFactoryReset = false;         // Button was held 10s+, wipe WiFi + file system once the exit has been written
+unsigned long ButtonRebootStartMillis = 0;
 
 #ifdef ESP32  // Define the M5Stack AtomS3
 const char* ISGR_root_ca =
@@ -306,7 +304,7 @@ struct UnitSettings {
   char webpass_identifier[8] = "webpass";
   char WebPassword[webpass_max_length] = "";  // Web interface password set from Home Assistant, empty = disabled
   char webauth_identifier[8] = "webauth";
-  bool WebAuthEnabled = true;                 // False = login disabled (an empty password was sent from Home Assistant)
+  bool WebAuthEnabled = true;  // False = login disabled (an empty password was sent from Home Assistant)
   String CompCurve = "{\"base\":{\"zone1\":{\"curve\":[{\"flow\":60,\"outside\":-10},{\"flow\":35,\"outside\":0},{\"flow\":20,\"outside\":15},{\"flow\":10,\"outside\":20}]},\"zone2\":{\"curve\":[{\"flow\":60,\"outside\":-10},{\"flow\":35,\"outside\":0},{\"flow\":20,\"outside\":15}]}},\"zone1\":{\"active\":false,\"manual_offset\":0,\"temp_offset\": 0,\"wind_offset\":0},\"zone2\":{\"active\":false,\"manual_offset\":0,\"temp_offset\": 0,\"wind_offset\":0},\"use_local_outdoor\":true,\"max_flow_overshoot\": 3,\"fixedlockoutduration\": 0}";
   float z1_manual_offset = 0;
   float z1_wind_offset = 0;
@@ -333,6 +331,10 @@ struct UnitSettings {
   bool RemoteTempOn = false;
   float ac_remote_room_temp = 0;
   bool ac_remote_val_change = false;
+  // Server Control Mode (SCM) on/off, saved to config.json when entered or exited and restored after a reboot once MQTT has connected
+  // (the prohibit states are held by the FTC, so only the on/off state is stored)
+  char scm_identifier[4] = "scm";
+  bool scm_active = false;
 };
 
 #ifdef ESP32
@@ -382,6 +384,10 @@ void MELCloudQueryReplyEngine(void);
 void HeatPumpQuerySVCEngine(void);
 void TriggerStateMachines(void);
 void HandleReconnection(void);
+void RebootBridge(void);
+void SaveSCMIntent(void);
+void RestoreServerControlMode(void);
+void ExitServerControlMode(void);
 void Zone1Report(void);
 void Zone2Report(void);
 void HotWaterReport(void);
@@ -427,6 +433,7 @@ unsigned long compressorrundurationMillis = 0;   // variable for comparing milli
 unsigned long postdhwfspdurationMillis = 0;      // variable for comparing millis counter
 unsigned long lastConsumedEnergyTimestamp = 0;   // variable for comparing millis counter
 unsigned long lastDeliveredEnergyTimestamp = 0;  // variable for comparing millis counter
+const unsigned long ENERGY_MAX_SAMPLE_MS = 60000;  // Longest interval the energy meter will integrate over (SystemReport runs every 2s, 30s at worst)
 unsigned long buttonPressStartTime = 0;          // variable for comparing millis counter
 unsigned long lastBlinkTime = 0;                 // variable for comparing millis counter
 unsigned long PortalRetryMillis = 0;             // Last STA retry while the config portal is open
@@ -542,6 +549,7 @@ void setup() {
 #endif
 
   readSettingsFromConfig();
+  SCMRestorePending = unitSettings.scm_active;  // Restore Server Control Mode once MQTT has connected
   initializeWifiManager();
   if (shouldSaveConfig) {
     saveConfig();
@@ -724,6 +732,9 @@ void loop() {
     PostWriteTrigger = false;
   }
 
+  // -- Server Control Mode Restore (once MQTT is connected) -- //
+  RestoreServerControlMode();
+
   // -- Time Sync -- //
   if (HeatPump.Status.SyncTime) { syncCurrentTime(); }
 
@@ -817,91 +828,115 @@ void loop() {
   }
 
 // -- Push Button Action Handler -- //
+//   Press < 5s    : Reboot
+//   Hold 5s - 10s : Exit Server Control Mode (and Comp Curve control), wait for the heat pump write + config save, then reboot
+//   Hold 10s+     : As above, then Factory Reset (WiFi credentials + file system wiped) before the reboot
+//   LED while held: Flashing Red (< 5s), Solid Red (5s - 10s), Solid Blue (10s+)
 #ifndef ARDUINO_WT32_ETH01
 
-  bool buttonIsCurrentlyPressed = (digitalRead(Reset_Button) == LOW) && !Reset_Button_pressed_at_boot;
-  unsigned long currentMillis = millis();
+  if (!ButtonRebootPending) {  // Button is ignored once an exit is in progress
 
-  // -------------------------------------------------------------------
-  // 1. BUTTON PRESS DETECTED (Transition to LOW)
-  // -------------------------------------------------------------------
-  if (buttonIsCurrentlyPressed && !buttonWasPressed) {
-    buttonPressStartTime = currentMillis;
-    buttonWasPressed = true;
-    lastBlinkTime = currentMillis;
-    ledState = true;
-  }
+    bool buttonIsCurrentlyPressed = (digitalRead(Reset_Button) == LOW) && !Reset_Button_pressed_at_boot;
+    unsigned long currentMillis = millis();
 
-  // -------------------------------------------------------------------
-  // 2. BUTTON HELD DOWN (Active Feedback)
-  // -------------------------------------------------------------------
-  if (buttonIsCurrentlyPressed && buttonWasPressed) {
-    unsigned long holdDuration = currentMillis - buttonPressStartTime;
+    // -------------------------------------------------------------------
+    // 1. BUTTON PRESS DETECTED (Transition to LOW)
+    // -------------------------------------------------------------------
+    if (buttonIsCurrentlyPressed && !buttonWasPressed) {
+      buttonPressStartTime = currentMillis;
+      buttonWasPressed = true;
+      lastBlinkTime = currentMillis;
+      ledState = true;
+    }
 
-    if (holdDuration < 10000) {
-      // --- WHILE HOLDING (< 10s): Flash Red every 250ms --- //
-      if (currentMillis - lastBlinkTime >= 250) {
-        lastBlinkTime = currentMillis;
-        ledState = !ledState;
+    // -------------------------------------------------------------------
+    // 2. BUTTON HELD DOWN (Active Feedback)
+    // -------------------------------------------------------------------
+    if (buttonIsCurrentlyPressed && buttonWasPressed) {
+      unsigned long holdDuration = currentMillis - buttonPressStartTime;
+
+      if (holdDuration < 5000) {
+        // --- WHILE HOLDING (< 5s): Flash Red every 250ms --- //
+        if (currentMillis - lastBlinkTime >= 250) {
+          lastBlinkTime = currentMillis;
+          ledState = !ledState;
 
 #ifdef ESP8266
-        digitalWrite(Red_RGB_LED, ledState ? HIGH : LOW);
+          digitalWrite(Red_RGB_LED, ledState ? HIGH : LOW);
+          digitalWrite(Blue_RGB_LED, LOW);
+#endif
+#ifdef ARDUINO_M5STACK_ATOMS3
+          myLED.setPixel(0, L_RED, 1);
+          myLED.brightness(ledState ? LED_BRIGHT : 0, 1);
+#endif
+        }
+      } else if (holdDuration < 10000) {
+// --- EXIT THRESHOLD REACHED (5s - 10s): Solid Red, release now to exit Server Control Mode --- //
+#ifdef ESP8266
+        digitalWrite(Red_RGB_LED, HIGH);
         digitalWrite(Blue_RGB_LED, LOW);
 #endif
 #ifdef ARDUINO_M5STACK_ATOMS3
         myLED.setPixel(0, L_RED, 1);
-        myLED.brightness(ledState ? LED_BRIGHT : 0, 1);
+        myLED.brightness(LED_BRIGHT, 1);
 #endif
-      }
-    } else {
-// --- THRESHOLD REACHED (>= 10s): Solid Blue --- //
+      } else {
+// --- FACTORY RESET THRESHOLD REACHED (>= 10s): Solid Blue --- //
 #ifdef ESP8266
-      digitalWrite(Red_RGB_LED, LOW);
-      digitalWrite(Blue_RGB_LED, HIGH);
+        digitalWrite(Red_RGB_LED, LOW);
+        digitalWrite(Blue_RGB_LED, HIGH);
 #endif
 #ifdef ARDUINO_M5STACK_ATOMS3
-      myLED.setPixel(0, L_BLUE, 1);
-      myLED.brightness(LED_BRIGHT, 1);
+        myLED.setPixel(0, L_BLUE, 1);
+        myLED.brightness(LED_BRIGHT, 1);
 #endif
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 3. BUTTON RELEASE DETECTED (Transition to HIGH)
+    // -------------------------------------------------------------------
+    if (!buttonIsCurrentlyPressed && buttonWasPressed) {
+      unsigned long pressDuration = currentMillis - buttonPressStartTime;
+      buttonWasPressed = false;  // Reset tracking state
+
+      if (pressDuration >= 5000) {
+        // --- HOLD RELEASE (>= 5s): Exit Server Control Mode, the reboot follows once the write has completed --- //
+        ExitServerControlMode();
+        ModifyCompCurveState(1, false, 1, 0);
+        ModifyCompCurveState(2, false, 1, 0);
+        ButtonFactoryReset = (pressDuration >= 10000);  // 10s+ also wipes WiFi + file system, LED stays as it was (Red or Blue)
+        ButtonRebootPending = true;
+        ButtonRebootStartMillis = currentMillis;
+      } else {
+// --- SHORT PRESS RELEASE (< 5s): Flash Red Once, then reboot --- //
+#ifdef ESP8266
+        digitalWrite(Red_RGB_LED, HIGH);
+        digitalWrite(Blue_RGB_LED, LOW);
+#endif
+#ifdef ARDUINO_M5STACK_ATOMS3
+        myLED.setPixel(0, L_RED, 1);
+        myLED.brightness(LED_BRIGHT, 1);
+#endif
+        delay(200);  // Brief feedback flash before restart
+        RebootBridge();
+      }
     }
   }
 
   // -------------------------------------------------------------------
-  // 3. BUTTON RELEASE DETECTED (Transition to HIGH)
+  // 4. EXIT PENDING: Reboot once the Server Control Mode exit has been written to the FTC and the config saved
   // -------------------------------------------------------------------
-  if (!buttonIsCurrentlyPressed && buttonWasPressed) {
-    unsigned long pressDuration = currentMillis - buttonPressStartTime;
-    buttonWasPressed = false;  // Reset tracking state
-
-    // Run heat pump escape actions on valid press release
-    HeatPump.SetSvrControlMode(0, HeatPump.Status.ProhibitDHW, HeatPump.Status.ProhibitHeatingZ1, HeatPump.Status.ProhibitCoolingZ1, HeatPump.Status.ProhibitHeatingZ2, HeatPump.Status.ProhibitCoolingZ2);
-    ModifyCompCurveState(1, false, 1, 0);
-    ModifyCompCurveState(2, false, 1, 0);
-
-    if (pressDuration >= 10000) {
-      // --- LONG PRESS RELEASE (>= 10s): Factory Reset --- //
-      delay(500);                   // Keep solid blue visible briefly
-      wifiManager.resetSettings();  // Clear WiFi credentials
-      LittleFS.format();            // Wipe internal filesystem
-    } else {
-// --- SHORT PRESS RELEASE (< 10s): Flash Red Once --- //
-#ifdef ESP8266
-      digitalWrite(Red_RGB_LED, HIGH);
-      digitalWrite(Blue_RGB_LED, LOW);
-#endif
-#ifdef ARDUINO_M5STACK_ATOMS3
-      myLED.setPixel(0, L_RED, 1);
-      myLED.brightness(LED_BRIGHT, 1);
-#endif
-      delay(200);  // Brief feedback flash before restart
+  if (ButtonRebootPending) {
+    bool exitDone = (cmd_queue_length == 0 && !WriteInProgress && !shouldSaveConfig);
+    if (exitDone || (millis() - ButtonRebootStartMillis >= 20000)) {  // 20s safety timeout if the FTC never accepts the write
+      if (ButtonFactoryReset) {
+        delay(500);                   // Keep the LED visible briefly
+        wifiManager.resetSettings();  // Clear WiFi credentials
+        LittleFS.format();            // Wipe internal filesystem
+      }
+      RebootBridge();
     }
-
-// --- Perform Board Reboot --- //
-#ifdef ESP8266
-    ESP.reset();
-#elif defined(ESP32)
-    ESP.restart();
-#endif
   }
 
 #endif
@@ -921,7 +956,6 @@ void loop() {
     PostDHWTimer = false;                                                // End
     CalculateCompCurve();                                                // Delay this until 60s after mode finished
     Flow_Inc_Count = 0;                                                  // Reset Flow Following Counter
-    FF_RaiseArmed = FF_LowerArmed = false;  // Clear flow following persistence timers
   }
 
   // -- Defrost Handler -- //
@@ -971,7 +1005,6 @@ void loop() {
         HeatPump.SetFlowSetpoint(FlowTemp_Target, HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
         write_thermostats();                                                                     //
         Flow_Inc_Count = 0;                                                                      // Reset the Flow Temp Incrementer
-        FF_RaiseArmed = FF_LowerArmed = false;  // Clear flow following persistence timers
       }                                                                                          //
     }                                                                                            //
   } else if (FrequencyLastLoop == 0 && HeatPump.Status.CompressorFrequency > 0) {                // Transition of Compressor Off to On
@@ -1018,70 +1051,59 @@ void loop() {
     ActiveControlReport();                                                                                            // Publish MQTT on occurance
   }
 
-
-  // -- Flow Temperature Overshoot Hysterisis (with persistence gate) -- //
+  // -- Flow Temperature Overshoot Hysterisis -- //
   if ((HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled) {
-    const bool ffHeating = (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1);  // Heating and Fixed Flow
-    const bool ffCooling = (HeatPump.Status.HeatCool == 1 && HeatPump.Status.HeatingControlModeZ1 == 3);  // Cooling
-    if (ffHeating || ffCooling) {
-      const float dir = ffHeating ? 1.0f : -1.0f;  // Cooling mirrors every comparison and step
-      const float flow = HeatPump.Status.HeaterOutputFlowTemperature;
-      const float fsp = HeatPump.Status.Zone1FlowTemperatureSetpoint;
-      const float exc = dir * (flow - fsp);                  // Flow excess over setpoint, in the direction that trips the outdoor unit
-      const bool moving = dir * (flow - FlowTemp_Last) > 0;  // Reading has just moved further from the setpoint
-      bool doRaise = false;
-
-      // Raise: reading must have moved away, then either hold for the persistence time or get close to the 2.0C stop
-      if (exc > 1.0f) {
-        if (!FF_RaiseArmed && moving) {
-          FF_RaiseArmed = true;
-          FF_RaiseArmedMs = millis();
-        }
-        if (exc >= FF_FASTPATH_EXC || (FF_RaiseArmed && (millis() - FF_RaiseArmedMs >= FF_RAISE_PERSIST_MS))) { doRaise = true; }
-      } else {
-        FF_RaiseArmed = false;  // Reading came back inside the band: forget it
-      }
-
-      if (doRaise) {
-        FF_LowerArmed = false;
-        if (Flow_Inc_Count == 0) {  // On first entry, remember the setpoint before following
-          FlowTemp_Target = fsp;
+    if (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1) {  // Heating and Fixed Flow
+      if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > 1.0) && (FlowTemp_Last < HeatPump.Status.HeaterOutputFlowTemperature)) {
+        // On entry of a new high flow temperature
+        if (Flow_Inc_Count == 0) {
+          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
           FlowFollowingActive = false;
-        }
-        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {  // Maximum increases is 0.5C * setting
-          HeatPump.SetFlowSetpoint(fsp + dir * 0.5f, HeatPump.Status.HeatingControlModeZ1, ZONE1);
-          HeatPump.Status.Zone1FlowTemperatureSetpoint += dir * 0.5f;
+        }                                                                                                                               // On First entry, set flow setpoint before
+        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {                                                                 // Maximum increases is 0.5C * setting
+          HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint + 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
+          HeatPump.Status.Zone1FlowTemperatureSetpoint += 0.5;
           write_thermostats();
           Flow_Inc_Count++;  // This will be cancelled at the next compressor stop
           FlowFollowingActive = true;
-          FF_RaiseArmed = false;  // Re-arm only on the next movement of the reading
         }
-        if (dir * (HeatPump.Status.Zone1FlowTemperatureSetpoint - Z1_CurveFSP) < 0) {  // Cancel Flow Following once the Comp Curve Target has passed the raised setpoint
+        if (HeatPump.Status.Zone1FlowTemperatureSetpoint < Z1_CurveFSP) {  // Cancel Flow Following if FSP exceeds Comp Curve Target
           FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
           FlowFollowingActive = false;
         }
-      } else if (Flow_Inc_Count > 0 && exc < 0.5f) {  // Flow Temp reducer if within 0.5C, only once it has held there
-        if (!FF_LowerArmed) {
-          FF_LowerArmed = true;
-          FF_LowerArmedMs = millis();
-        }
-        if (millis() - FF_LowerArmedMs >= FF_LOWER_PERSIST_MS) {
-          HeatPump.SetFlowSetpoint(fsp - dir * 0.5f, HeatPump.Status.HeatingControlModeZ1, ZONE1);
-          HeatPump.Status.Zone1FlowTemperatureSetpoint -= dir * 0.5f;
-          write_thermostats();
-          Flow_Inc_Count--;
-          if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
-          FF_LowerArmed = false;
-        }
-      } else {
-        FF_LowerArmed = false;
+      } else if ((Flow_Inc_Count > 0) && (HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint < 0.5)) {  // Flow Temp reducer if within 0.5C
+        HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint - 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);            // Need to avoid overwriting by onboard weather curve..
+        HeatPump.Status.Zone1FlowTemperatureSetpoint -= 0.5;
+        write_thermostats();
+        Flow_Inc_Count--;                                          // This will be cancelled at the next compressor stop
+        if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
       }
-    } else {
-      FF_RaiseArmed = FF_LowerArmed = false;
+    } else if (HeatPump.Status.HeatCool == 1 && HeatPump.Status.HeatingControlModeZ1 == 3) {  // Cooling
+      if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint < -1.0) && (FlowTemp_Last > HeatPump.Status.HeaterOutputFlowTemperature)) {
+        // On entry of a new high flow temperature
+        if (Flow_Inc_Count == 0) {
+          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
+          FlowFollowingActive = false;
+        }                                                                                                                               // On First entry, set flow setpoint before
+        if (Flow_Inc_Count < (unitSettings.max_flow_overshoot / 0.5)) {                                                                 // Maximum increases is -0.5C * 5 = -2.5C
+          HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint - 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
+          HeatPump.Status.Zone1FlowTemperatureSetpoint -= 0.5;
+          write_thermostats();
+          Flow_Inc_Count++;  // This will be cancelled at the next compressor stop
+        }
+        if (HeatPump.Status.Zone1FlowTemperatureSetpoint > Z1_CurveFSP) {  // Cancel Flow Following if FSP exceeds Comp Curve Target
+          FlowTemp_Target = HeatPump.Status.Zone1FlowTemperatureSetpoint;
+          FlowFollowingActive = false;
+        }
+      } else if ((Flow_Inc_Count > 0) && (HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > -0.5)) {  // Flow Temp reducer if within 0.5C
+        HeatPump.SetFlowSetpoint((HeatPump.Status.Zone1FlowTemperatureSetpoint + 0.5), HeatPump.Status.HeatingControlModeZ1, ZONE1);             // Need to avoid overwriting by onboard weather curve..
+        HeatPump.Status.Zone1FlowTemperatureSetpoint += 0.5;
+        write_thermostats();
+        Flow_Inc_Count--;                                          // This will be cancelled at the next compressor stop
+        if (Flow_Inc_Count == 0) { FlowFollowingActive = false; }  // End Flow Following
+      }
     }
     FlowTemp_Last = HeatPump.Status.HeaterOutputFlowTemperature;  // Last Loop Flow Temperature
-  } else {
-    FF_RaiseArmed = FF_LowerArmed = false;
   }
 
   // -- Exit Onboard Compensation Curve if System Operation Modes Change -- //
@@ -1109,6 +1131,59 @@ void loop() {
   CPULoopSpeed = micros() - looppreviousMicros;  // Loop Speed End Monitor
 }
 
+
+void RebootBridge(void) {
+#ifdef ESP8266
+  ESP.reset();
+#endif
+#ifdef ESP32
+  ESP.restart();
+#endif
+}
+
+// Records whether the user has put the heat pump into Server Control Mode (MQTT command), saved to config.json only when it changes.
+// The prohibit states themselves are held by the FTC, so they are not stored here.
+void SaveSCMIntent(void) {
+  SCMRestorePending = false;                                                  // The latest user command supersedes any restore still pending
+  if (ShortCycleProtectionActive || NormalHWBoostOperating == 1) { return; }  // Temporary use of Server Control Mode by the bridge is not the user's state
+  bool active = (HeatPump.Status.SvrControlMode != 0);
+  if (active != unitSettings.scm_active) {
+    unitSettings.scm_active = active;
+    shouldSaveConfig = true;  // Only write the file when something differs
+  }
+}
+
+// After a reboot, re-enter Server Control Mode if it was active. Waits for MQTT (either broker) and the first full A2W read cycle, which
+// brings in the prohibit states held by the FTC, so they are written back exactly as they are.
+void RestoreServerControlMode(void) {
+  if (!SCMRestorePending) { return; }
+  if (!(MQTTClient1.connected() || MQTTClient2.connected())) { return; }         // MQTT must have connected first
+  if (!HeatPump.PrevConnected || !HeatPump.Status.HasAnsweredDips) { return; }  // A2W only, and writes are held until the first read cycle is complete
+  if (cmd_queue_length > 0 || WriteInProgress) { return; }                       // Never stack on top of another write
+  SCMRestorePending = false;                                                     // Once per boot
+  if (!unitSettings.scm_active) { return; }
+  printCurrentTime();
+  if (HeatPump.Status.SvrControlMode != 0) {  // The FTC is still in Server Control Mode, nothing to restore
+    DEBUG_PRINTLN(F("Server Control Mode still active on the FTC"));
+    return;
+  }
+  DEBUG_PRINTLN(F("MQTT connected, restoring Server Control Mode"));
+  HeatPump.SetSvrControlMode(1, HeatPump.Status.ProhibitDHW, HeatPump.Status.ProhibitHeatingZ1, HeatPump.Status.ProhibitCoolingZ1, HeatPump.Status.ProhibitHeatingZ2, HeatPump.Status.ProhibitCoolingZ2);
+  WriteInProgress = true;              // Wait For OK, as the MQTT command handlers do
+  HeatPump.Status.SvrControlMode = 1;  // Publish the status just written
+}
+
+// Leaves Server Control Mode (push button) and clears the saved state so it is not restored on the next boot
+void ExitServerControlMode(void) {
+  if (HeatPump.PrevConnected) {  // A2W only, an A2A unit has no Server Control Mode and a queued A2W write would never clear
+    HeatPump.SetSvrControlMode(0, HeatPump.Status.ProhibitDHW, HeatPump.Status.ProhibitHeatingZ1, HeatPump.Status.ProhibitCoolingZ1, HeatPump.Status.ProhibitHeatingZ2, HeatPump.Status.ProhibitCoolingZ2);
+    WriteInProgress = true;  // Wait For OK, as the MQTT command handlers do
+    HeatPump.Status.SvrControlMode = 0;
+  }
+  unitSettings.scm_active = false;
+  SCMRestorePending = false;
+  shouldSaveConfig = true;
+}
 
 void HandleConnectionAttempts(void) {
   if (!HeatPump.HeatPumpConnected() && !AC.HeatPumpConnected()) {
@@ -1154,11 +1229,19 @@ void HandleReconnection(void) {
 
   if (Connection_attempt_counter > 20) {  // Request/Attempt disconnect if no reply
     DEBUG_PRINTLN(F("No reply after 20+ attempts, forcing disconnect first..."));
-    if (HeatPump.PrevConnected) { HeatPump.Disconnect(); } else { AC.Disconnect(); }
+    if (HeatPump.PrevConnected) {
+      HeatPump.Disconnect();
+    } else {
+      AC.Disconnect();
+    }
     Connection_attempt_counter = 0;  // Start the next round of 20
   }
 
-  if (HeatPump.PrevConnected) { HeatPump.Connect(); } else { AC.Connect(); }
+  if (HeatPump.PrevConnected) {
+    HeatPump.Connect();
+  } else {
+    AC.Connect();
+  }
   Connection_attempt_counter++;
 
   if (HeatPump.HeatPumpConnected() || AC.HeatPumpConnected()) {
@@ -1549,6 +1632,7 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
     MQTTWriteReceived("MQTT Server Control Mode", 17);
     HeatPump.SetSvrControlMode(Payload.toInt(), HeatPump.Status.ProhibitDHW, HeatPump.Status.ProhibitHeatingZ1, HeatPump.Status.ProhibitCoolingZ1, HeatPump.Status.ProhibitHeatingZ2, HeatPump.Status.ProhibitCoolingZ2);
     HeatPump.Status.SvrControlMode = Payload.toInt();
+    SaveSCMIntent();
   } else if ((Topic == MQTTCommandSystemPower) || (Topic == MQTTCommand2SystemPower)) {
     MQTTWriteReceived("MQTT Set System Power Mode", 15);
     if (Payload == String("On")) {
@@ -1986,11 +2070,11 @@ void SystemReport(void) {
 
   if (HeatPump.Status.ImmersionActive == 1 || HeatPump.Status.Booster1Active == 1 || HeatPump.Status.Booster2Active == 1) {  // Account for Immersion or Booster Instead of HP
     Non_HP_Mode = true;
-    if (HeatPump.Status.CompressorFrequency == 0) {  // Heater-only running (no compressor): the estimate above is only standby draw, and an immersion is not seen by the primary loop deltaT
-      if (HeatPump.Status.InputPower > 0) { EstInputPower = HeatPump.Status.InputPower; }                            // Uses Booster/Immersion Size in MRC
-      if (HeatPump.Status.OutputPower > 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }          // Resistive heater: output follows the FTC reported heater power
-    } else {                                                                                                         // Compressor running with Booster assist (unchanged behaviour)
-      if (EstInputPower == 0) { EstInputPower = HeatPump.Status.InputPower; }                                        // Uses Booster/Immersion Size in MRC
+    if (HeatPump.Status.CompressorFrequency == 0) {                                                          // Heater-only running (no compressor): the estimate above is only standby draw, and an immersion is not seen by the primary loop deltaT
+      if (HeatPump.Status.InputPower > 0) { EstInputPower = HeatPump.Status.InputPower; }                    // Uses Booster/Immersion Size in MRC
+      if (HeatPump.Status.OutputPower > 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }  // Resistive heater: output follows the FTC reported heater power
+    } else {                                                                                                 // Compressor running with Booster assist (unchanged behaviour)
+      if (EstInputPower == 0) { EstInputPower = HeatPump.Status.InputPower; }                                // Uses Booster/Immersion Size in MRC
       if (OutputPower == 0) { OutputPower = HeatOutputPower = HeatPump.Status.OutputPower; }
     }
   }
@@ -2046,7 +2130,7 @@ void SystemReport(void) {
   const float CoP_Limit = 15.0f;         // Bound for transient spikes (e.g. compressor ramp-up, valve changeover, sensor lag)
   if ((HeatPump.Status.CompressorFrequency > 0 || Non_HP_Mode) && EstInputPower >= CoP_Min_Input_kW) {
     bool CoolingMode = (HeatPump.Status.HeatCool == 1 && !DHW_Mode && HeatPump.Status.Defrost == 0 && !Non_HP_Mode);  // Genuine space cooling (not defrost, DHW or heater)
-    float CoP_Output = CoolingMode ? -OutputPower : OutputPower;                                      // Cooling: heat removed from the loop is the useful output
+    float CoP_Output = CoolingMode ? -OutputPower : OutputPower;                                                      // Cooling: heat removed from the loop is the useful output
     Instant_CoP = CoP_Output / EstInputPower;
     if (Instant_CoP > CoP_Limit) {
       Instant_CoP = CoP_Limit;
@@ -2097,21 +2181,37 @@ void SystemReport(void) {
   doc[F("HB_ID")] = Heart_Value;
 
 
-  // Calculate Consumption Energy Onboard (Left Integral)
+  // Calculate Consumption/Delivered Energy Onboard
+  // The meter is called on EVERY pass (idle included, mode -1) so its timestamps always advance and a sample only
+  // ever covers the time since the previous pass, never the whole idle gap before the first sample of a run.
+  int consumedMode = -1;
+  double consumedKW = 0;
   if (EstHeatingInputPower != 0) {
-    updateEnergyMeter(round2(EstHeatingInputPower), 0);
+    consumedMode = 0;
+    consumedKW = EstHeatingInputPower;
   } else if (EstCoolingInputPower != 0) {
-    updateEnergyMeter(round2(EstCoolingInputPower), 1);
+    consumedMode = 1;
+    consumedKW = EstCoolingInputPower;
   } else if (EstDHWInputPower != 0) {
-    updateEnergyMeter(round2(EstDHWInputPower), 2);
+    consumedMode = 2;
+    consumedKW = EstDHWInputPower;
   }
+
+  int deliveredMode = -1;
+  double deliveredKW = 0;
   if (HeatingOutputPower != 0) {
-    updateEnergyMeter(round2(HeatingOutputPower), 3);
+    deliveredMode = 3;
+    deliveredKW = HeatingOutputPower;
   } else if (CoolOutputPower != 0) {
-    updateEnergyMeter(round2(CoolOutputPower), 4);
+    deliveredMode = 4;
+    deliveredKW = CoolOutputPower;
   } else if (DHWOutputPower != 0) {
-    updateEnergyMeter(round2(DHWOutputPower), 5);
+    deliveredMode = 5;
+    deliveredKW = DHWOutputPower;
   }
+
+  updateEnergyMeter(round2(consumedKW), consumedMode, false);
+  updateEnergyMeter(round2(deliveredKW), deliveredMode, true);
 
 
   serializeJson(doc, Buffer);
@@ -3046,27 +3146,22 @@ bool getOATRunningAverage(float newOAT) {
 
 
 
-void updateEnergyMeter(double currentPowerKW, int mode) {
-  unsigned long* lastTimestamp;
-
-  if (mode >= 0 && mode <= 2) {
-    lastTimestamp = &lastConsumedEnergyTimestamp;
-  } else if (mode >= 3 && mode <= 5) {
-    lastTimestamp = &lastDeliveredEnergyTimestamp;
-  } else {
-    return;
-  }
+// delivered: false = consumed side (modes 0-2), true = delivered side (modes 3-5)
+// mode: slot in cumulativeEnergyToday, or -1 when that side is idle (timestamp still advances, nothing is added)
+void updateEnergyMeter(double currentPowerKW, int mode, bool delivered) {
+  unsigned long* lastTimestamp = delivered ? &lastDeliveredEnergyTimestamp : &lastConsumedEnergyTimestamp;
 
   unsigned long currentTime = millis();
+  bool firstCall = (*lastTimestamp == 0);                // Nothing to measure from yet (first pass after boot)
   unsigned long durationMs = currentTime - *lastTimestamp;
+  *lastTimestamp = currentTime;                          // Always advance, even when idle, so a sample never spans an idle gap
 
-  if (*lastTimestamp > 0 && durationMs > 0) {
-    // (1000ms * 60s * 60m) = 3,600,000
-    double durationHours = (double)durationMs / 3600000.0;
-    cumulativeEnergyToday[mode] += (currentPowerKW * durationHours);
-  }
+  if (firstCall || mode < 0 || mode > 5) { return; }     // First pass, or this side is idle
+  if (durationMs == 0 || durationMs > ENERGY_MAX_SAMPLE_MS) { return; }  // Skip a stalled/stale interval rather than integrating over it
 
-  *lastTimestamp = currentTime;
+  // (1000ms * 60s * 60m) = 3,600,000
+  double durationHours = (double)durationMs / 3600000.0;
+  cumulativeEnergyToday[mode] += (currentPowerKW * durationHours);
 }
 
 #ifdef ESP32  // Define the M5Stack AtomS3

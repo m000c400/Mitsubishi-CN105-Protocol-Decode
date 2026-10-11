@@ -371,6 +371,12 @@ void readSettingsFromConfig() {
             } else {                    // For upgrading from <6.5.6, create the entry
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
+            // Server Control Mode (restored after a reboot once MQTT is connected)
+            if (doc.containsKey(unitSettings.scm_identifier)) {
+              unitSettings.scm_active = doc[unitSettings.scm_identifier].as<bool>();
+            } else {                    // For upgrading from earlier firmware, create the entry
+              shouldSaveConfig = true;  // Save config after exit to update the file
+            }
           }
         }
         configFile.close();
@@ -535,6 +541,7 @@ void readSettingsFromConfig() {
       doc[unitSettings.remote_ac_identifier] = unitSettings.RemoteTempOn;
       doc[unitSettings.webpass_identifier] = unitSettings.WebPassword;
       doc[unitSettings.webauth_identifier] = unitSettings.WebAuthEnabled;
+      doc[unitSettings.scm_identifier] = unitSettings.scm_active;
 
       if (serializeJson(doc, configFile) == 0) {
         DEBUG_PRINTLN(F("[FAILED]"));
