@@ -9,6 +9,8 @@ uint8_t Init3[] = { 0xfc, 0x5a, 0x02, 0x7a, 0x02, 0xca, 0x01, 0x5d };  // Air to
 uint8_t Init4[] = { 0xfc, 0x5a, 0x02, 0x7a, 0x02, 0xca, 0x02, 0x5c };  // Air to Water Disconnect
 
 
+#define FLOW_SETPOINT_MIN 5.0f  // Minimum flow temperature setpoint SetFlowSetpoint() will write (lowest cooling flow temperature)
+
 #define FIRST_READ_NUMBER_COMMANDS 38
 uint8_t FirstReadActiveCommand[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
                                      0x10, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
@@ -306,6 +308,15 @@ void ECODAN::SetZoneTempSetpoint(float Setpoint, uint8_t Mode, uint8_t Zone) {
 
 
 void ECODAN::SetFlowSetpoint(float Setpoint, uint8_t Mode, uint8_t Zone) {
+  // Refuse anything below the FTC's minimum flow temperature. 5C is the lowest cooling flow setpoint, so this floor is valid for heating and cooling.
+  // This stops an unset/zero setpoint (or a step up from one, e.g. 0.5C, 1.0C) being written to the FTC. The check has to come before EncodeFlowTemperature(),
+  // which overwrites the shared TxMessage. The negated comparison also rejects NaN.
+  if (!(Setpoint >= FLOW_SETPOINT_MIN)) {
+    DEBUG_PRINT(F("SetFlowSetpoint refused: "));
+    DEBUG_PRINT(String(Setpoint, 1));
+    DEBUG_PRINTLN(F("C is below the minimum flow setpoint"));
+    return;
+  }
   ECODANDECODER::EncodeFlowTemperature(Setpoint, Mode, Zone, Status.HotWaterSetpoint);  // Can OR the write with the mode but removed as different MQTT topic:      SET_ZONE_SETPOINT | SET_HEATING_CONTROL_MODE
   if (cmd_queue_length < 10) {
     cmd_queue_length++;

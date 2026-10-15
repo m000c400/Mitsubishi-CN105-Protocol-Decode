@@ -82,7 +82,7 @@
 
 #endif  // ESP8266 || ESP32
 
-String FirmwareVersion = "7.0.33";
+String FirmwareVersion = "7.1.0";
 String LatestFirmwareVersion;
 
 // Language for OTA Check
@@ -199,6 +199,8 @@ float Z2_CurveFSP = 30;
 float FlowTemp_Last = 0;
 float FlowTemp_Target = 0;
 int Flow_Inc_Count = 0;
+const unsigned long PostDHW_Window_ms = 300000;  // Post DHW flow following window (5min), released to the Comp Curve at the end of it
+const float PostDHW_Flow_Offset = 2.0;           // During the window the flow setpoint is held this far above the actual flow temperature (C)
 int lastResetDay = -1;
 const int OAT_Window_Size = 300;
 int OAT_readings[OAT_Window_Size];
@@ -403,6 +405,8 @@ void ACReport(void);
 void CalculateCompCurve(void);
 void FastPublish(void);
 void dhw_flow_follower(void);
+void post_dhw_flow_follower(void);
+void ReleaseFlowFollowing(void);
 
 #ifdef ESP32  // Define the M5Stack AtomS3
 void CheckForOTAUpdates(void);
@@ -520,7 +524,7 @@ void setup() {
   ETH.begin();
 #endif
 
-#ifndef ARDUINO_WT32_ETH01
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
   pinMode(Reset_Button, INPUT);  // Pushbutton on other modules
 
   if (digitalRead(Reset_Button) == LOW) {  // Inverted (Button Pushed is LOW at boot)
@@ -590,7 +594,7 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) { CheckForOTAUpdates(); }
 #endif
 
-  CalculateCompCurve();
+  //CalculateCompCurve();
   for (int i = 0; i < OAT_Window_Size; i++) { OAT_readings[i] = 0; }
 }
 
@@ -952,10 +956,8 @@ void loop() {
     PostDHWTimer = true;                                                 // Start timing
     postdhwfspdurationMillis = millis();                                 // Start the post DHW timer
   }                                                                      // For Onboard Comp Curve, recalculate FSP to prevent outdoor stopping
-  if (PostDHWTimer && (millis() - postdhwfspdurationMillis >= 60000)) {  // Once 60s after DHW has completed, write flow setpoint back down
-    PostDHWTimer = false;                                                // End
-    CalculateCompCurve();                                                // Delay this until 60s after mode finished
-    Flow_Inc_Count = 0;                                                  // Reset Flow Following Counter
+  if (PostDHWTimer) {         // Window after DHW: no fixed hold time as the flow temperature fall rate depends on the installation
+    post_dhw_flow_follower();  // Keeps FSP above the actual flow for up to 5min, then hands back to the Comp Curve
   }
 
   // -- Defrost Handler -- //
@@ -1001,11 +1003,7 @@ void loop() {
       CompressorPeriodDurations[0] = (millis() / 1000) - CompressorStopStartTimer[0];            // Current Time from Stop > Stop (Seconds) to Array Pos 0
       CompressorStopStartTimer[0] = (millis() / 1000);                                           // Last Compressor Stop Time (Seconds)
       compressorrundurationMillis = CompressorStopStartTimer[0] - CompressorStopStartTimer[1];   // Last Compressor Run Duration (Seconds)
-      if (Flow_Inc_Count > 0) {                                                                  // If its been manipulated
-        HeatPump.SetFlowSetpoint(FlowTemp_Target, HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
-        write_thermostats();                                                                     //
-        Flow_Inc_Count = 0;                                                                      // Reset the Flow Temp Incrementer
-      }                                                                                          //
+      if (Flow_Inc_Count > 0) { ReleaseFlowFollowing(); }                                        // If its been manipulated, hand the setpoint back and reset the Flow Temp Incrementer
     }                                                                                            //
   } else if (FrequencyLastLoop == 0 && HeatPump.Status.CompressorFrequency > 0) {                // Transition of Compressor Off to On
     HeatPump.WriteServiceCodeCMD(19);                                                            // Trigger Fan Speed Request Service Code
@@ -1015,6 +1013,13 @@ void loop() {
     }
   }
   FrequencyLastLoop = HeatPump.Status.CompressorFrequency;
+
+  // -- Flow Following Release (level triggered) -- //
+  // The release above only fires on the compressor running > stopped edge. If the counter is still set with the compressor stopped (e.g. the stop came during a defrost),
+  // nothing else clears it, and CalculateCompCurve() keeps skipping its write while it is set. The DHW followers manage the setpoint themselves, so they are left alone.
+  if (Flow_Inc_Count > 0 && HeatPump.Status.HasAnsweredDips && HeatPump.Status.CompressorFrequency == 0 && !inDefrostWindow && HeatPump.Status.DHWActive != 1 && !PostDHWTimer && !DHWFlowFollowingActive) {
+    ReleaseFlowFollowing();
+  }
 
   // -- AC Webhook Writes -- //
   if (unitSettings.ac_remote_val_change) {
@@ -1052,7 +1057,9 @@ void loop() {
   }
 
   // -- Flow Temperature Overshoot Hysterisis -- //
-  if ((HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled) {
+  // Only while the outdoor unit is running (the FTC's +2.0C stop rule is what this protects against), after the first full read cycle, and never from a zero flow setpoint.
+  // With a setpoint of 0 any flow temperature looks like a huge overshoot, and stepping up from 0 only writes a meaningless 0.5C / 1.0C setpoint to the FTC.
+  if (HeatPump.Status.HasAnsweredDips && HeatPump.Status.CompressorFrequency > 0 && HeatPump.Status.Zone1FlowTemperatureSetpoint > 0 && (HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled) {
     if (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1) {  // Heating and Fixed Flow
       if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > 1.0) && (FlowTemp_Last < HeatPump.Status.HeaterOutputFlowTemperature)) {
         // On entry of a new high flow temperature
@@ -1104,6 +1111,8 @@ void loop() {
       }
     }
     FlowTemp_Last = HeatPump.Status.HeaterOutputFlowTemperature;  // Last Loop Flow Temperature
+  } else {
+    FlowTemp_Last = HeatPump.Status.HeaterOutputFlowTemperature;  // Keep tracking while gated, so the first pass after it opens is not a false rising edge from a stale or zero value
   }
 
   // -- Exit Onboard Compensation Curve if System Operation Modes Change -- //
@@ -2915,6 +2924,54 @@ void dhw_flow_follower() {
   }
 }
 
+// Post DHW Flow Following. After Hot Water the flow temperature falls from the DHW temperature at a rate that depends on the installation,
+// so a fixed hold time cannot suit every system. For up to PostDHW_Window_ms keep the flow setpoint PostDHW_Flow_Offset above the actual flow
+// temperature, so the FTC does not stop the outdoor unit (flow > FSP + 2.0C) while the flow is still high, then hand back to the Comp Curve.
+void post_dhw_flow_follower(void) {
+  if (HeatPump.Status.SystemOperationMode == 1 || HeatPump.Status.SystemOperationMode == 6) {  // Hot Water has started again, dhw_flow_follower takes over
+    PostDHWTimer = false;
+    return;
+  }
+
+  float Follow_FSP = HeatPump.Status.HeaterOutputFlowTemperature + PostDHW_Flow_Offset;
+  // No FlowTempMax cap here: straight after Hot Water the actual flow can be above it, and a setpoint more than 2C below the actual flow makes the FTC stop the outdoor unit
+
+  bool canFollow = (HeatPump.Status.HeatingControlModeZ1 == 1 && unitSettings.shortcycleprotectionenabled && unitSettings.z1_active);  // Same Fixed Flow + Active Control conditions as dhw_flow_follower
+
+  // End of window: not following, the flow has cooled to where the curve is the higher setpoint, or the window time is up
+  if (!canFollow || Follow_FSP <= Z1_CurveFSP || (millis() - postdhwfspdurationMillis >= PostDHW_Window_ms)) {
+    PostDHWTimer = false;  // End
+    CalculateCompCurve();  // Write the Comp Curve flow setpoint back
+    Flow_Inc_Count = 0;    // Reset Flow Following Counter
+    return;
+  }
+
+  Flow_Inc_Count = 0;  // The DHW follower has already moved FSP off the curve, so the overshoot counter no longer applies (its reducer would fight this follower)
+  FlowFollowingActive = false;
+
+  // Only write on a change (flow is read in 0.5C steps) and never on top of a write that is still queued
+  if (cmd_queue_length == 0 && !WriteInProgress && fabsf(Follow_FSP - HeatPump.Status.Zone1FlowTemperatureSetpoint) >= 0.25f) {
+    HeatPump.SetFlowSetpoint(Follow_FSP, HEATING_CONTROL_MODE_FLOW_TEMP, ZONE1);
+    write_thermostats();
+    HeatPump.Status.Zone1FlowTemperatureSetpoint = Follow_FSP;  // Optimistic, the FTC is slow to report it back
+  }
+}
+
+
+// Ends Anti-Stop flow following once the compressor has stopped. Hands Zone 1 back to the Comp Curve value when the curve is driving it, otherwise to the setpoint
+// captured when following began. Z1_CurveFSP is recalculated every 5 min even while CalculateCompCurve() is blocked by Flow_Inc_Count, so it is current.
+void ReleaseFlowFollowing(void) {
+  if (Flow_Inc_Count == 0) { return; }
+  float RestoreFSP = unitSettings.z1_active ? Z1_CurveFSP : FlowTemp_Target;
+  if (RestoreFSP > 0) {  // Never write a zero/unset setpoint back to the FTC
+    HeatPump.SetFlowSetpoint(RestoreFSP, HeatPump.Status.HeatingControlModeZ1, ZONE1);  // Need to avoid overwriting by onboard weather curve..
+    write_thermostats();
+    HeatPump.Status.Zone1FlowTemperatureSetpoint = RestoreFSP;  // Optimistic, the FTC is slow to report it back
+  }
+  Flow_Inc_Count = 0;  // Reset the Flow Temp Incrementer
+  FlowFollowingActive = false;
+}
+
 
 void CalculateCompCurve(void) {
   DEBUG_PRINTLN("Performing Compensation Curve Calculation");
@@ -3031,7 +3088,7 @@ void CalculateCompCurve(void) {
     //if (Z1_CurveFSP < HeatPump.Status.FlowTempMin) { Z1_CurveFSP = HeatPump.Status.FlowTempMin; }   // Removed due to Cooling
 
     // Write the Flow Setpoints to Heat Pump
-    if (unitSettings.z1_active && Flow_Inc_Count == 0 && HeatPump.Status.DHWActive != 1 && Z1_CurveFSP != HeatPump.Status.Zone1FlowTemperatureSetpoint) {
+    if (unitSettings.z1_active && !PostDHWTimer && Flow_Inc_Count == 0 && HeatPump.Status.DHWActive != 1 && Z1_CurveFSP != HeatPump.Status.Zone1FlowTemperatureSetpoint) {  // Not during the post DHW follow window
       HeatPump.SetFlowSetpoint(Z1_CurveFSP, HeatPump.Status.HeatingControlModeZ1, ZONE1);
       write_thermostats();
       HeatPump.Status.Zone1FlowTemperatureSetpoint = Z1_CurveFSP;
