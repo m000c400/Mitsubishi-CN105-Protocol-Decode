@@ -199,8 +199,10 @@ float Z2_CurveFSP = 30;
 float FlowTemp_Last = 0;
 float FlowTemp_Target = 0;
 int Flow_Inc_Count = 0;
-const unsigned long PostDHW_Window_ms = 300000;  // Post DHW flow following window (5min), released to the Comp Curve at the end of it
-const float PostDHW_Flow_Offset = 2.0;           // During the window the flow setpoint is held this far above the actual flow temperature (C)
+const unsigned long PostDHW_Window_ms = 900000;  // Post DHW flow letdown safety cap (15min). The normal exit is much earlier, as soon as the Comp Curve is reachable
+const float PostDHW_Descent_Offset = 1.5;        // During the letdown the flow setpoint is held this far BELOW the actual flow temperature (C), and it is also the hand-back point:
+                                                 // the Comp Curve takes over as soon as flow - curve <= this. The FTC stops when flow > setpoint + 2.0C and flow reads in 0.5C steps,
+                                                 // so 1.5 survives one step up (gap 2.0, not over), 1.9 survives none. 1.0 is the conservative setting if stops are seen.
 int lastResetDay = -1;
 const int OAT_Window_Size = 300;
 int OAT_readings[OAT_Window_Size];
@@ -1059,7 +1061,8 @@ void loop() {
   // -- Flow Temperature Overshoot Hysterisis -- //
   // Only while the outdoor unit is running (the FTC's +2.0C stop rule is what this protects against), after the first full read cycle, and never from a zero flow setpoint.
   // With a setpoint of 0 any flow temperature looks like a huge overshoot, and stepping up from 0 only writes a meaningless 0.5C / 1.0C setpoint to the FTC.
-  if (HeatPump.Status.HasAnsweredDips && HeatPump.Status.CompressorFrequency > 0 && HeatPump.Status.Zone1FlowTemperatureSetpoint > 0 && (HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled) {
+  // Not during the post DHW letdown: its setpoint sits below the flow on purpose, and this block would step it back up against the letdown.
+  if (HeatPump.Status.HasAnsweredDips && HeatPump.Status.CompressorFrequency > 0 && HeatPump.Status.Zone1FlowTemperatureSetpoint > 0 && (HeatPump.Status.SystemOperationMode == 2 || HeatPump.Status.SystemOperationMode == 3) && unitSettings.shortcycleprotectionenabled && !PostDHWTimer) {
     if (HeatPump.Status.HeatCool == 0 && HeatPump.Status.HeatingControlModeZ1 == 1) {  // Heating and Fixed Flow
       if ((HeatPump.Status.HeaterOutputFlowTemperature - HeatPump.Status.Zone1FlowTemperatureSetpoint > 1.0) && (FlowTemp_Last < HeatPump.Status.HeaterOutputFlowTemperature)) {
         // On entry of a new high flow temperature
@@ -2651,8 +2654,9 @@ void ActiveControlReport(void) {
 
   if (FlowFollowingActive || Flow_Inc_Count > 0) { CycleProtectionStatus = "Anti-Stop Flow Temperature Following Active (" + String(Flow_Inc_Count * 0.5) + "C)"; }
   if (DHWFlowFollowingActive) { CycleProtectionStatus = "DHW Flow Temperature Following Active"; }
+  if (PostDHWTimer) { CycleProtectionStatus = "Post DHW Flow Temperature Letdown Active"; }  // After the DHW line, so it takes over once Hot Water has ended
   if (ShortCycleProtectionActive) { CycleProtectionStatus = "Short Cycle Lockout Active"; }
-  if ((!FlowFollowingActive && Flow_Inc_Count == 0) && !DHWFlowFollowingActive && !ShortCycleProtectionActive) { CycleProtectionStatus = "Inactive"; }
+  if ((!FlowFollowingActive && Flow_Inc_Count == 0) && !DHWFlowFollowingActive && !PostDHWTimer && !ShortCycleProtectionActive) { CycleProtectionStatus = "Inactive"; }
 
   doc[F("ShortCycleProtectionActive")] = CycleProtectionStatus;
   doc[F("ShortCycleReason")] = ShortCycleReason[ShortCycleCauseNumber];
@@ -2924,21 +2928,26 @@ void dhw_flow_follower() {
   }
 }
 
-// Post DHW Flow Following. After Hot Water the flow temperature falls from the DHW temperature at a rate that depends on the installation,
-// so a fixed hold time cannot suit every system. For up to PostDHW_Window_ms keep the flow setpoint PostDHW_Flow_Offset above the actual flow
-// temperature, so the FTC does not stop the outdoor unit (flow > FSP + 2.0C) while the flow is still high, then hand back to the Comp Curve.
+// Post DHW Flow Letdown. After Hot Water the flow temperature falls from the DHW temperature at a rate that depends on the installation.
+// A setpoint held ABOVE the actual flow only ever holds the compressor up (the FTC chases a setpoint it can never reach), so the flow plateaus above the curve
+// and the hand-back to the curve then lands more than 2.0C below the flow = outdoor unit stop. Holding the setpoint BELOW the actual flow does the opposite:
+// the FTC lowers the compressor frequency and the flow comes down toward the Comp Curve, while staying inside the FTC stop band (flow > FSP + 2.0C).
+// While the flow is still dropping out of DHW the (up to 30s old) flow reading is above the real flow, so the setpoint written is conservative
+// (above the real flow) and the compressor is not pulled down; the letdown only bites once the flow has settled.
+// Hands back to the Comp Curve as soon as flow - curve <= PostDHW_Descent_Offset, immediately if it already is when Hot Water ends.
 void post_dhw_flow_follower(void) {
   if (HeatPump.Status.SystemOperationMode == 1 || HeatPump.Status.SystemOperationMode == 6) {  // Hot Water has started again, dhw_flow_follower takes over
     PostDHWTimer = false;
     return;
   }
 
-  float Follow_FSP = HeatPump.Status.HeaterOutputFlowTemperature + PostDHW_Flow_Offset;
+  float Follow_FSP = HeatPump.Status.HeaterOutputFlowTemperature - PostDHW_Descent_Offset;  // Always below the actual flow
   // No FlowTempMax cap here: straight after Hot Water the actual flow can be above it, and a setpoint more than 2C below the actual flow makes the FTC stop the outdoor unit
 
   bool canFollow = (HeatPump.Status.HeatingControlModeZ1 == 1 && unitSettings.shortcycleprotectionenabled && unitSettings.z1_active);  // Same Fixed Flow + Active Control conditions as dhw_flow_follower
 
-  // End of window: not following, the flow has cooled to where the curve is the higher setpoint, or the window time is up
+  // Hand back when the actual flow is inside the stop band of the curve (flow - curve <= PostDHW_Descent_Offset, so the curve is at or above the letdown target),
+  // when not following, or at the safety cap. Writing the curve then leaves the FTC a gap of at most PostDHW_Descent_Offset, the same as it was just seeing.
   if (!canFollow || Follow_FSP <= Z1_CurveFSP || (millis() - postdhwfspdurationMillis >= PostDHW_Window_ms)) {
     PostDHWTimer = false;  // End
     CalculateCompCurve();  // Write the Comp Curve flow setpoint back
