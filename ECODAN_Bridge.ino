@@ -82,7 +82,7 @@
 
 #endif  // ESP8266 || ESP32
 
-String FirmwareVersion = "7.1.0";
+String FirmwareVersion = "7.1.1";
 String LatestFirmwareVersion;
 
 // Language for OTA Check
@@ -200,9 +200,9 @@ float FlowTemp_Last = 0;
 float FlowTemp_Target = 0;
 int Flow_Inc_Count = 0;
 const unsigned long PostDHW_Window_ms = 900000;  // Post DHW flow letdown safety cap (15min). The normal exit is much earlier, as soon as the Comp Curve is reachable
-const float PostDHW_Descent_Offset = 1.5;        // During the letdown the flow setpoint is held this far BELOW the actual flow temperature (C), and it is also the hand-back point:
+const float PostDHW_Descent_Offset = 0.5;        // During the letdown the flow setpoint is held this far BELOW the actual flow temperature (C), and it is also the hand-back point:
                                                  // the Comp Curve takes over as soon as flow - curve <= this. The FTC stops when flow > setpoint + 2.0C and flow reads in 0.5C steps,
-                                                 // so 1.5 survives one step up (gap 2.0, not over), 1.9 survives none. 1.0 is the conservative setting if stops are seen.
+                                                 // so 0.5 aims to survive the gap
 int lastResetDay = -1;
 const int OAT_Window_Size = 300;
 int OAT_readings[OAT_Window_Size];
